@@ -139,9 +139,17 @@ public class SQLParserTest extends TestCase {
 
     @Test
     public void testNormalCreate() throws Exception {
-        String sql = "CREATE TABLE IF NOT EXISTS tbl_A ( Id INT NOT NULL UNIQUE PRIMARY KEY, name VARCHAR(20) NOT NULL,;";
+        String sql = "CREATE TABLE IF NOT EXISTS tbl_A ( Id INT NOT NULL UNIQUE PRIMARY KEY, name VARCHAR(20) NOT NULL;";
         parser.parse(sql.getBytes(), context);
         assertEquals(SQLContext.CREATE_SQL, context.getSQLType());
+        assertEquals("tbl_A", context.getTableName(0));
+    }
+
+    @Test
+    public void testNormalTruncate() throws Exception {
+        String sql = "Truncate TABLE IF EXISTS tbl_A;";
+        parser.parse(sql.getBytes(), context);
+        assertEquals(SQLContext.TRUNCATE_SQL, context.getSQLType());
         assertEquals("tbl_A", context.getTableName(0));
     }
 }

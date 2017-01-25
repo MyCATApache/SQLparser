@@ -47,7 +47,7 @@ public class SQLParser {
                         switch (sql[pos]) {
                             case 'F'://FROM
                             case 'f':
-                                tokenCount++;
+                                tokenCount++;//by kaiz : 所有的token遍历时，都记得要加 tokenCount，在后面token距离计算时会用到
                                 if ((sql[++pos]&0x5f) == 'R' && (sql[++pos]&0x5f) == 'O' && (sql[++pos]&0x5f) == 'M' &&
                                         (sql[++pos] == ' ' || sql[pos] == '\t' || sql[pos] == '\r' || sql[pos] == '\n')) {
                                     //by kaiz : 将接下来需要处理的状态按顺序加入队列
@@ -55,9 +55,9 @@ public class SQLParser {
                                     status_queue[1] = TBL_ALIAS_FINDER;
                                     status_queue[2] = TBL_ALIAS_PARSER;
                                     status_queue[3] = TBL_COMMA_FINDER;
-                                    break basic_loop;
+                                    break basic_loop;//by kaiz : 设置好状态列表后，可以跳出当前处理，进入接下来的状态处理
                                 } else {
-                                    findNextToken(false); //by kaiz : 如果不是需要处理的token，需要在此消耗掉，避免诸如 from_delete 之类的字段被误判
+                                    findNextToken(false); //by kaiz : 如果不是需要处理的token，需要在此消耗掉，避免诸如 from_delete 之类的token被误判
                                 }
                                 break;
                             case 'J'://JOIN
@@ -65,7 +65,7 @@ public class SQLParser {
                                 tokenCount++;
                                 if ((sql[++pos]&0x5f) == 'O' && (sql[++pos]&0x5f) == 'I' && (sql[++pos]&0x5f) == 'N' &&
                                         (sql[++pos] == ' ' || sql[pos] == '\t' || sql[pos] == '\r' || sql[pos] == '\n')) {
-                                    status_queue[0] = TBL_NAME_PARSER;
+                                    status_queue[0] = TBL_NAME_PARSER;//by kaiz : 辅助语句功能型的token不需要设置SQL type
                                     break basic_loop;
                                 } else {
                                     findNextToken(false);
@@ -79,7 +79,7 @@ public class SQLParser {
                                     case 'p':
                                         if ((sql[++pos]&0x5f) == 'D' && (sql[++pos]&0x5f) == 'A' && (sql[++pos]&0x5f) == 'T' && (sql[++pos]&0x5f) == 'E' &&
                                                 (sql[++pos] == ' ' || sql[pos] == '\t' || sql[pos] == '\r' || sql[pos] == '\n')) {
-                                            context.setSQLType(SQLContext.UPDATE_SQL);
+                                            context.setSQLType(SQLContext.UPDATE_SQL);//by kaiz : 主导语句功能的token记得设置SQL Type
                                             status_queue[0] = TBL_NAME_PARSER;
                                             break basic_loop;
                                         } else {
@@ -238,17 +238,33 @@ public class SQLParser {
                                     findNextToken(false);
                                 }
                                 break;
-                            case 'T'://TABLE
+                            case 'T'://TABLE //TRUNCATE
                             case 't':
                                 tokenCount++;
-                                if ((sql[++pos]&0x5f) == 'A' && (sql[++pos]&0x5f) == 'B' && (sql[++pos]&0x5f) == 'L' && (sql[++pos]&0x5f) == 'E' &&
-                                        (sql[++pos] == ' ' || sql[pos] == '\t' || sql[pos] == '\r' || sql[pos] == '\n')) {
-                                    status_queue[0] = TBL_OPTION_PARSER;
-                                    status_queue[1] = TBL_NAME_PARSER;
-                                    break basic_loop;
-                                } else {
-                                    findNextToken(false);
+                                switch (sql[++pos]&0x5f) {
+                                    case 'A':
+                                        if ((sql[++pos]&0x5f) == 'B' && (sql[++pos]&0x5f) == 'L' && (sql[++pos]&0x5f) == 'E' &&
+                                                (sql[++pos] == ' ' || sql[pos] == '\t' || sql[pos] == '\r' || sql[pos] == '\n')) {
+                                            status_queue[0] = TBL_OPTION_PARSER;
+                                            status_queue[1] = TBL_NAME_PARSER;
+                                            break basic_loop;
+                                        } else {
+                                            findNextToken(false);
+                                        }
+                                        break ;
+                                    case 'R':
+                                        if ((sql[++pos]&0x5f) == 'U' && (sql[++pos]&0x5f) == 'N' && (sql[++pos]&0x5f) == 'C' && (sql[++pos]&0x5f) == 'A' && (sql[++pos]&0x5f) == 'T' && (sql[++pos]&0x5f) == 'E' &&
+                                                (sql[++pos] == ' ' || sql[pos] == '\t' || sql[pos] == '\r' || sql[pos] == '\n')) {
+                                            context.setSQLType(SQLContext.TRUNCATE_SQL);
+                                        } else {
+                                            findNextToken(false);
+                                        }
+                                        break ;
+                                    default:
+                                        findNextToken(false);
+                                        break ;
                                 }
+
                                 break;
                             case ' ':
                             case '\r':

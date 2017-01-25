@@ -7,7 +7,7 @@ import org.junit.Test;
 import java.util.stream.IntStream;
 
 /**
- * Created by Fanfan on 2017/1/22.
+ * Created by Kaiz on 2017/1/22.
  */
 public class SQLParserTest extends TestCase {
     SQLParser parser;

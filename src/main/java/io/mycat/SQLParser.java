@@ -326,6 +326,9 @@ public class SQLParser {
                     jump_status = true;
                     pos++;
                     break;
+                case ',':
+                    //pos++;
+                    return;
                 default:
                     if (jump_status) {
                         return;
@@ -477,6 +480,7 @@ public class SQLParser {
                     break comma_loop;
                 default:
                     status_queue[queue_pos] = BASIC_PARSER; //by kaiz : 回到基本处理流程
+                    break comma_loop;
             }
         }
     }
@@ -669,13 +673,12 @@ public class SQLParser {
         while (status_queue[--queue_pos]!=pre_status && queue_pos>0);
     }
 
-    static long RunBench(SQLParser parser, SQLContext context) {
-        short[] result = new short[128];
+    static long RunBench(byte[] src, SQLParser parser, SQLContext context) {
+        //short[] result = new short[128];
         //  todo:动态解析代码生成器
         //  todo:函数调用
         //  tip:sql越长时间越长
         //  tip:递归好像消耗有点大
-        byte[] src = "SELECT a FROM ab             , ee.ff AS f,(SELECT a FROM `schema_bb`.`tbl_bb`,(SELECT a FROM ccc AS c, `dddd`));".getBytes(StandardCharsets.UTF_8);//20794
         int count = 0;
         long start = System.currentTimeMillis();
         do {
@@ -686,12 +689,13 @@ public class SQLParser {
 
     public static void main(String[] args) {
         long min = 0;
+        byte[] src = "SELECT a FROM ab             , ee.ff AS f,(SELECT a FROM `schema_bb`.`tbl_bb`,(SELECT a FROM ccc AS c, `dddd`));".getBytes(StandardCharsets.UTF_8);//20794
         SQLParser parser = new SQLParser();
         SQLContext context = new SQLContext();
-        for (int i = 0; i < 10; i++) {
-            //System.out.print("Loop "+i+" : ");
-            long cur = RunBench(parser, context);//无参数优化：7510，加server参数7657，因为是默认就是server jvm，优化流程后6531
-            //System.out.println(cur);
+        for (int i = 0; i < 50; i++) {
+            System.out.print("Loop "+i+" : ");
+            long cur = RunBench(src, parser, context);//无参数优化：7510，加server参数7657，因为是默认就是server jvm，优化流程后6531
+            System.out.println(cur);
             if (cur < min || min == 0) {
                 min = cur;
             }

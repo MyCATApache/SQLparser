@@ -22,14 +22,14 @@ public class SQLParserTest extends TestCase {
 
     @Test
     public void testNormalSelect() throws Exception {
-        String t = "SELECT * FROM a";
+        String t = "SELECT * FROM a;# This comment continues to the end of line";
         parser.parse(t.getBytes(), context);
         assertEquals(1, context.getTableCount());
     }
 
     @Test
     public void testMultiTableSelect() throws Exception {
-        String t = "SELECT a.*, b.* FROM tbl_A a, tbl_B b , tbl_C c;";
+        String t = "SELECT a.*, b.* FROM tbl_A a,tbl_B b , tbl_C c;#This comment continues to the end of line\n ";
         parser.parse(t.getBytes(), context);
         IntStream.range(0, context.getTableCount()).forEach(i -> System.out.println(context.getSchemaName(i)+'.'+context.getTableName(i)));
         assertEquals(3, context.getTableCount());
@@ -37,14 +37,14 @@ public class SQLParserTest extends TestCase {
 
     @Test
     public void testJoinSelect() {
-        String t = "SELECT a.*, b.* FROM tbl_A as a left join tbl_B b on b.id=a.id;";
+        String t = "SELECT a.*, b.* FROM tbl_A as a left join tbl_B b on b.id=a.id;-- This comment continues to the end of line";
         parser.parse(t.getBytes(), context);
         assertEquals(2, context.getTableCount());
     }
 
     @Test
     public void testNestSelect() throws Exception {
-        String sql = "SELECT a fROm ab             , ee.ff AS f,(SELECT a FROM `schema_bb`.`tbl_bb`,(SELECT a FROM ccc AS c, `dddd`));";
+        String sql = "SELECT a fROm ab             , ee.ff AS f,(SELECT a FROM `schema_bb`.`tbl_bb`,(SELECT a FROM ccc AS c, `dddd`));/* 注释 */";
         parser.parse(sql.getBytes(), context);
         IntStream.range(0, context.getTableCount()).forEach(i -> System.out.println(context.getSchemaName(i)+'.'+context.getTableName(i)));
         assertEquals(5, context.getTableCount());

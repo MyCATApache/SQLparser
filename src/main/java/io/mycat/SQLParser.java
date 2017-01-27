@@ -49,7 +49,7 @@ public class SQLParser {
                             case 'F'://FROM
                             case 'f':
                                 tokenCount++;//by kaiz : 所有的token遍历时，都记得要加 tokenCount，在后面token距离计算时会用到
-                                if ((sql[++pos] & 0x5f) == 'R' && (sql[++pos] & 0x5f) == 'O' && (sql[++pos] & 0x5f) == 'M' &&
+                                if ((sql[++pos] & 0xDF) == 'R' && (sql[++pos] & 0xDF) == 'O' && (sql[++pos] & 0xDF) == 'M' &&
                                         (sql[++pos] == ' ' || sql[pos] == '\t' || sql[pos] == '\r' || sql[pos] == '\n')) {
                                     //by kaiz : 将接下来需要处理的状态按顺序加入队列
                                     status_queue[0] = TBL_NAME_PARSER;
@@ -64,7 +64,7 @@ public class SQLParser {
                             case 'J'://JOIN
                             case 'j':
                                 tokenCount++;
-                                if ((sql[++pos] & 0x5f) == 'O' && (sql[++pos] & 0x5f) == 'I' && (sql[++pos] & 0x5f) == 'N' &&
+                                if ((sql[++pos] & 0xDF) == 'O' && (sql[++pos] & 0xDF) == 'I' && (sql[++pos] & 0xDF) == 'N' &&
                                         (sql[++pos] == ' ' || sql[pos] == '\t' || sql[pos] == '\r' || sql[pos] == '\n')) {
                                     status_queue[0] = TBL_NAME_PARSER;//by kaiz : 辅助语句功能型的token不需要设置SQL type
                                     break basic_loop;
@@ -78,7 +78,7 @@ public class SQLParser {
                                 switch (sql[++pos]) {
                                     case 'P':
                                     case 'p':
-                                        if ((sql[++pos] & 0x5f) == 'D' && (sql[++pos] & 0x5f) == 'A' && (sql[++pos] & 0x5f) == 'T' && (sql[++pos] & 0x5f) == 'E' &&
+                                        if ((sql[++pos] & 0xDF) == 'D' && (sql[++pos] & 0xDF) == 'A' && (sql[++pos] & 0xDF) == 'T' && (sql[++pos] & 0xDF) == 'E' &&
                                                 (sql[++pos] == ' ' || sql[pos] == '\t' || sql[pos] == '\r' || sql[pos] == '\n')) {
                                             context.setSQLType(SQLContext.UPDATE_SQL);//by kaiz : 主导语句功能的token记得设置SQL Type
                                             status_queue[0] = TBL_NAME_PARSER;
@@ -89,7 +89,7 @@ public class SQLParser {
                                         break;
                                     case 'S':
                                     case 's':
-                                        if ((sql[++pos] & 0x5f) == 'E' &&
+                                        if ((sql[++pos] & 0xDF) == 'E' &&
                                                 (sql[++pos] == ' ' || sql[pos] == '\t' || sql[pos] == '\r' || sql[pos] == '\n')) {
                                             context.setSQLType(SQLContext.USE_SQL);
                                         } else {
@@ -104,9 +104,9 @@ public class SQLParser {
                             case 'D'://DELETE //DROP
                             case 'd':
                                 tokenCount++;
-                                switch ((sql[++pos] & 0x5f)) {
+                                switch ((sql[++pos] & 0xDF)) {
                                     case 'E':
-                                        if ((sql[++pos] & 0x5f) == 'L' && (sql[++pos] & 0x5f) == 'E' && (sql[++pos] & 0x5f) == 'T' && (sql[++pos] & 0x5f) == 'E' &&
+                                        if ((sql[++pos] & 0xDF) == 'L' && (sql[++pos] & 0xDF) == 'E' && (sql[++pos] & 0xDF) == 'T' && (sql[++pos] & 0xDF) == 'E' &&
                                                 (sql[++pos] == ' ' || sql[pos] == '\t' || sql[pos] == '\r' || sql[pos] == '\n')) {
                                             context.setSQLType(SQLContext.DELETE_SQL);
                                         } else {
@@ -114,7 +114,7 @@ public class SQLParser {
                                         }
                                         break;
                                     case 'R':
-                                        if ((sql[++pos] & 0x5f) == 'O' && (sql[++pos] & 0x5f) == 'P' &&
+                                        if ((sql[++pos] & 0xDF) == 'O' && (sql[++pos] & 0xDF) == 'P' &&
                                                 (sql[++pos] == ' ' || sql[pos] == '\t' || sql[pos] == '\r' || sql[pos] == '\n')) {
                                             context.setSQLType(SQLContext.DROP_SQL);
                                         } else {
@@ -128,9 +128,9 @@ public class SQLParser {
                             case 'S'://SELECT //SHOW
                             case 's':
                                 tokenCount++;
-                                switch ((sql[++pos] & 0x5f)) {
+                                switch ((sql[++pos] & 0xDF)) {
                                     case 'E':
-                                        if ((sql[++pos] & 0x5f) == 'L' && (sql[++pos] & 0x5f) == 'E' && (sql[++pos] & 0x5f) == 'C' && (sql[++pos] & 0x5f) == 'T' &&
+                                        if ((sql[++pos] & 0xDF) == 'L' && (sql[++pos] & 0xDF) == 'E' && (sql[++pos] & 0xDF) == 'C' && (sql[++pos] & 0xDF) == 'T' &&
                                                 (sql[++pos] == ' ' || sql[pos] == '\t' || sql[pos] == '\r' || sql[pos] == '\n')) {
                                             context.setSQLType(SQLContext.SELECT_SQL);
                                         } else {
@@ -138,7 +138,7 @@ public class SQLParser {
                                         }
                                         break;
                                     case 'H':
-                                        if ((sql[++pos] & 0x5f) == 'O' && (sql[++pos] & 0x5f) == 'W' &&
+                                        if ((sql[++pos] & 0xDF) == 'O' && (sql[++pos] & 0xDF) == 'W' &&
                                                 (sql[++pos] == ' ' || sql[pos] == '\t' || sql[pos] == '\r' || sql[pos] == '\n')) {
                                             context.setSQLType(SQLContext.SHOW_SQL);
                                         } else {
@@ -152,10 +152,10 @@ public class SQLParser {
                             case 'I': //INSERT //INTO
                             case 'i':
                                 tokenCount++;
-                                if ((sql[++pos] & 0x5f) == 'N') {
-                                    switch ((sql[++pos] & 0x5f)) {
+                                if ((sql[++pos] & 0xDF) == 'N') {
+                                    switch ((sql[++pos] & 0xDF)) {
                                         case 'S':
-                                            if ((sql[++pos] & 0x5f) == 'E' && (sql[++pos] & 0x5f) == 'R' && (sql[++pos] & 0x5f) == 'T' &&
+                                            if ((sql[++pos] & 0xDF) == 'E' && (sql[++pos] & 0xDF) == 'R' && (sql[++pos] & 0xDF) == 'T' &&
                                                     (sql[++pos] == ' ' || sql[pos] == '\t' || sql[pos] == '\r' || sql[pos] == '\n')) {
                                                 sqlContext.setSQLType(SQLContext.INSERT_SQL);
                                                 status_queue[0] = INSERT_OPTIONS_PARSER;
@@ -166,7 +166,7 @@ public class SQLParser {
                                             }
                                             break;
                                         case 'T':
-                                            if ((sql[++pos] & 0x5f) == 'O' &&
+                                            if ((sql[++pos] & 0xDF) == 'O' &&
                                                     (sql[++pos] == ' ' || sql[pos] == '\t' || sql[pos] == '\r' || sql[pos] == '\n')) {
                                                 status_queue[0] = TBL_NAME_PARSER;
                                                 break basic_loop;
@@ -185,9 +185,9 @@ public class SQLParser {
                             case 'L': //LOCK //LIMIT
                             case 'l':
                                 tokenCount++;
-                                switch ((sql[++pos] & 0x5f)) {
+                                switch ((sql[++pos] & 0xDF)) {
                                     case 'O':
-                                        if ((sql[++pos] & 0x5f) == 'C' && (sql[++pos] & 0x5f) == 'K' &&
+                                        if ((sql[++pos] & 0xDF) == 'C' && (sql[++pos] & 0xDF) == 'K' &&
                                                 (sql[++pos] == ' ' || sql[pos] == '\t' || sql[pos] == '\r' || sql[pos] == '\n')) {
                                             context.setSQLType(SQLContext.LOCK_SQL);
                                         } else {
@@ -195,7 +195,7 @@ public class SQLParser {
                                         }
                                         break;
                                     case 'I':
-                                        if ((sql[++pos] & 0x5f) == 'M' && (sql[++pos] & 0x5f) == 'I' && (sql[++pos] & 0x5f) == 'T' &&
+                                        if ((sql[++pos] & 0xDF) == 'M' && (sql[++pos] & 0xDF) == 'I' && (sql[++pos] & 0xDF) == 'T' &&
                                                 (sql[++pos] == ' ' || sql[pos] == '\t' || sql[pos] == '\r' || sql[pos] == '\n')) {
                                             context.setSQLType(SQLContext.LOCK_SQL);
                                         } else {
@@ -209,7 +209,7 @@ public class SQLParser {
                             case 'A'://ALTER
                             case 'a':
                                 tokenCount++;
-                                if ((sql[++pos] & 0x5f) == 'L' && (sql[++pos] & 0x5f) == 'T' && (sql[++pos] & 0x5f) == 'E' && (sql[++pos] & 0x5f) == 'R' &&
+                                if ((sql[++pos] & 0xDF) == 'L' && (sql[++pos] & 0xDF) == 'T' && (sql[++pos] & 0xDF) == 'E' && (sql[++pos] & 0xDF) == 'R' &&
                                         (sql[++pos] == ' ' || sql[pos] == '\t' || sql[pos] == '\r' || sql[pos] == '\n')) {
                                     context.setSQLType(SQLContext.ALTER_SQL);
                                 } else {
@@ -219,7 +219,7 @@ public class SQLParser {
                             case 'C'://CREATE
                             case 'c':
                                 tokenCount++;
-                                if ((sql[++pos] & 0x5f) == 'R' && (sql[++pos] & 0x5f) == 'E' && (sql[++pos] & 0x5f) == 'A' && (sql[++pos] & 0x5f) == 'T' && (sql[++pos] & 0x5f) == 'E' &&
+                                if ((sql[++pos] & 0xDF) == 'R' && (sql[++pos] & 0xDF) == 'E' && (sql[++pos] & 0xDF) == 'A' && (sql[++pos] & 0xDF) == 'T' && (sql[++pos] & 0xDF) == 'E' &&
                                         (sql[++pos] == ' ' || sql[pos] == '\t' || sql[pos] == '\r' || sql[pos] == '\n')) {
                                     context.setSQLType(SQLContext.CREATE_SQL);
                                 } else {
@@ -229,7 +229,7 @@ public class SQLParser {
                             case 'R'://REPLACE
                             case 'r':
                                 tokenCount++;
-                                if ((sql[++pos] & 0x5f) == 'E' && (sql[++pos] & 0x5f) == 'P' && (sql[++pos] & 0x5f) == 'L' && (sql[++pos] & 0x5f) == 'A' && (sql[++pos] & 0x5f) == 'C' && (sql[++pos] & 0x5f) == 'E' &&
+                                if ((sql[++pos] & 0xDF) == 'E' && (sql[++pos] & 0xDF) == 'P' && (sql[++pos] & 0xDF) == 'L' && (sql[++pos] & 0xDF) == 'A' && (sql[++pos] & 0xDF) == 'C' && (sql[++pos] & 0xDF) == 'E' &&
                                         (sql[++pos] == ' ' || sql[pos] == '\t' || sql[pos] == '\r' || sql[pos] == '\n')) {
                                     context.setSQLType(SQLContext.REPLACE_SQL);
                                     status_queue[0] = INSERT_OPTIONS_PARSER;
@@ -242,9 +242,9 @@ public class SQLParser {
                             case 'T'://TABLE //TRUNCATE
                             case 't':
                                 tokenCount++;
-                                switch (sql[++pos] & 0x5f) {
+                                switch (sql[++pos] & 0xDF) {
                                     case 'A':
-                                        if ((sql[++pos] & 0x5f) == 'B' && (sql[++pos] & 0x5f) == 'L' && (sql[++pos] & 0x5f) == 'E' &&
+                                        if ((sql[++pos] & 0xDF) == 'B' && (sql[++pos] & 0xDF) == 'L' && (sql[++pos] & 0xDF) == 'E' &&
                                                 (sql[++pos] == ' ' || sql[pos] == '\t' || sql[pos] == '\r' || sql[pos] == '\n')) {
                                             status_queue[0] = TBL_OPTION_PARSER;
                                             status_queue[1] = TBL_NAME_PARSER;
@@ -254,7 +254,7 @@ public class SQLParser {
                                         }
                                         break;
                                     case 'R':
-                                        if ((sql[++pos] & 0x5f) == 'U' && (sql[++pos] & 0x5f) == 'N' && (sql[++pos] & 0x5f) == 'C' && (sql[++pos] & 0x5f) == 'A' && (sql[++pos] & 0x5f) == 'T' && (sql[++pos] & 0x5f) == 'E' &&
+                                        if ((sql[++pos] & 0xDF) == 'U' && (sql[++pos] & 0xDF) == 'N' && (sql[++pos] & 0xDF) == 'C' && (sql[++pos] & 0xDF) == 'A' && (sql[++pos] & 0xDF) == 'T' && (sql[++pos] & 0xDF) == 'E' &&
                                                 (sql[++pos] == ' ' || sql[pos] == '\t' || sql[pos] == '\r' || sql[pos] == '\n')) {
                                             context.setSQLType(SQLContext.TRUNCATE_SQL);
                                         } else {
@@ -284,54 +284,14 @@ public class SQLParser {
                                 }
                                 break;
                             case '#'://"#" 和"–- "属于单行注释，注释范围为该行的结尾
-                                ++pos;
-                                while (pos < SQLLength) {
-                                    if ((sql[pos]) == '\n') {
-                                        ++pos;
-                                        break;
-                                    } else {
-                                        ++pos;
-                                    }
-                                }
+                                SharpComment();
                                 break;
-                            case '-': {
-                                // 从‘-- ’序列到行尾。请注意‘-- ’(双破折号)注释风格要求第2个破折号后面至少跟一个空格符(例如空格、tab、换行符等等)。该语法与标准SQL注释语法稍有不同
-                                //https://dev.mysql.com/doc/refman/5.7/en/comments.html
-                                if (sql[pos + 1] == '-') {
-                                    byte maybeSpace = sql[pos + 2];
-                                    if (maybeSpace == ' ' || maybeSpace == '\t' || maybeSpace == '\r') {
-                                        pos += 3;
-                                        while (pos < SQLLength) {
-                                            if (sql[pos] == '\n') {
-                                                ++pos;
-                                                break;
-                                            } else {
-                                                ++pos;
-                                            }
-                                        }
-                                        break;
-                                    }
-                                }
-                                //goto default;
-                            }
-                            case '/': {
-                                if (sql[pos + 1] == '*') {
-                                    /*
-                                   这种注释方式还有一种扩展，即当在注释中使用！加上版本号时，只要mysql的当前版本等于或大于该版本号，则该注释中的sql语句将被mysql执行。这种方式只适用于mysql数据库。不具有其他数据库的可移植性。
-                                    */
-                                    pos += 2;
-                                    while (true) {
-                                        if (sql[pos] == '*' && sql[pos + 1] == '/') {
-                                            pos += 2;
-                                            break;
-                                        } else {
-                                            ++pos;
-                                        }
-                                    }
-                                    break;
-                                }
-                                //goto default;
-                            }
+                            case '-':
+                                DoubleDashComment();
+                                break;
+                            case '/':
+                                MultiLineComment();
+                                break;
                             default:
                                 pos++;
                                 tokenCount++;
@@ -379,6 +339,15 @@ public class SQLParser {
                 case ',':
                     //pos++;
                     return;
+                case '#'://"#" 和"–- "属于单行注释，注释范围为该行的结尾
+                    SharpComment();
+                    break;
+                case '-':
+                    DoubleDashComment();
+                    break;
+                case '/':
+                    MultiLineComment();
+                    break;
                 default:
                     if (jump_status) {
                         return;
@@ -399,6 +368,15 @@ public class SQLParser {
                 case '\n':
                 case '\t':
                 case '`':
+                    break;
+                case '#':
+                    SharpComment();
+                    break;
+                case '-':
+                    DoubleDashComment();
+                    break;
+                case '/':
+                    MultiLineComment();
                     break;
                 case ';':
                 case '(':
@@ -459,7 +437,7 @@ public class SQLParser {
             switch (sql[++pos]) {
                 case 'A': //by kaiz : 处理 AS 写法
                 case 'a':
-                    if ((sql[++pos] & 0x5f) == 'S' &&
+                    if ((sql[++pos] & 0xDF) == 'S' &&
                             (sql[++pos] == ' ' || sql[pos] == '\t' || sql[pos] == '\r' || sql[pos] == '\n')) {
                         tokenCount++;
                         queue_pos++;
@@ -481,6 +459,15 @@ public class SQLParser {
                 case '\r':
                 case '\n':
                     break;
+                case '#'://"#" 和"–- "属于单行注释，注释范围为该行的结尾
+                    SharpComment();
+                    break;
+                case '-':
+                    DoubleDashComment();
+                    break;
+                case '/':
+                    MultiLineComment();
+                    break;
                 default:
                     status_queue[queue_pos] = BASIC_PARSER;
                     break alias_loop;
@@ -497,6 +484,15 @@ public class SQLParser {
                 case '\r':
                 case '\n':
                     break;
+                case '#'://"#" 和"–- "属于单行注释，注释范围为该行的结尾
+                    SharpComment();
+                    break;
+                case '-':
+                    DoubleDashComment();
+                    break;
+                case '/':
+                    MultiLineComment();
+                    break;
                 default:
                     tokenCount++;
                     while (pos < SQLLength) { //by kaiz : 略过别名
@@ -507,6 +503,15 @@ public class SQLParser {
                             case '\n':
                                 queue_pos++;
                                 break alias_loop;
+                            case '#'://"#" 和"–- "属于单行注释，注释范围为该行的结尾
+                                SharpComment();
+                                break;
+                            case '-':
+                                DoubleDashComment();
+                                break;
+                            case '/':
+                                MultiLineComment();
+                                break;
                             case ',':
                                 queue_pos = 0;
                                 break alias_loop;
@@ -525,6 +530,15 @@ public class SQLParser {
                 case '\t':
                 case '\r':
                 case '\n':
+                    break;
+                case '#'://"#" 和"–- "属于单行注释，注释范围为该行的结尾
+                    SharpComment();
+                    break;
+                case '-':
+                    DoubleDashComment();
+                    break;
+                case '/':
+                    MultiLineComment();
                     break;
                 case ',':
                     queue_pos = 0; //by kaiz : 回到队列首，重新开始下一个处理循环
@@ -545,7 +559,7 @@ public class SQLParser {
                 case 'd':
                     tokenCount++;
                     tempPos = pos;
-                    if ((sql[++pos] & 0x5f) == 'E' && (sql[++pos] & 0x5f) == 'L' && sql[++pos] == 'A' && (sql[++pos] & 0x5f) == 'Y' && (sql[++pos] & 0x5f) == 'E' && (sql[++pos] & 0x5f) == 'D' &&
+                    if ((sql[++pos] & 0xDF) == 'E' && (sql[++pos] & 0xDF) == 'L' && sql[++pos] == 'A' && (sql[++pos] & 0xDF) == 'Y' && (sql[++pos] & 0xDF) == 'E' && (sql[++pos] & 0xDF) == 'D' &&
                             (sql[++pos] == ' ' || sql[pos] == '\t' || sql[pos] == '\r' || sql[pos] == '\n')) {
                         //context.setSQLType(SQLContext.ALTER_SQL);
                         //by kaiz : just pass...
@@ -561,8 +575,8 @@ public class SQLParser {
                 case 'l':
                     tokenCount++;
                     tempPos = pos;
-                    if ((sql[++pos] & 0x5f) == 'O' && (sql[++pos] & 0x5f) == 'W' && sql[++pos] == '_' &&
-                            (sql[++pos] & 0x5f) == 'P' && (sql[++pos] & 0x5f) == 'R' && (sql[++pos] & 0x5f) == 'I' && (sql[++pos] & 0x5f) == 'O' && (sql[++pos] & 0x5f) == 'R' && (sql[++pos] & 0x5f) == 'I' && (sql[++pos] & 0x5f) == 'T' && (sql[++pos] & 0x5f) == 'Y' &&
+                    if ((sql[++pos] & 0xDF) == 'O' && (sql[++pos] & 0xDF) == 'W' && sql[++pos] == '_' &&
+                            (sql[++pos] & 0xDF) == 'P' && (sql[++pos] & 0xDF) == 'R' && (sql[++pos] & 0xDF) == 'I' && (sql[++pos] & 0xDF) == 'O' && (sql[++pos] & 0xDF) == 'R' && (sql[++pos] & 0xDF) == 'I' && (sql[++pos] & 0xDF) == 'T' && (sql[++pos] & 0xDF) == 'Y' &&
                             (sql[++pos] == ' ' || sql[pos] == '\t' || sql[pos] == '\r' || sql[pos] == '\n')) {
                         //context.setSQLType(SQLContext.ALTER_SQL);
                         //by kaiz : just pass...
@@ -578,8 +592,8 @@ public class SQLParser {
                 case 'h':
                     tokenCount++;
                     tempPos = pos;
-                    if ((sql[++pos] & 0x5f) == 'I' && (sql[++pos] & 0x5f) == 'G' && (sql[++pos] & 0x5f) == 'H' && sql[++pos] == '_' &&
-                            (sql[++pos] & 0x5f) == 'P' && (sql[++pos] & 0x5f) == 'R' && (sql[++pos] & 0x5f) == 'I' && (sql[++pos] & 0x5f) == 'O' && (sql[++pos] & 0x5f) == 'R' && (sql[++pos] & 0x5f) == 'I' && (sql[++pos] & 0x5f) == 'T' && (sql[++pos] & 0x5f) == 'Y' &&
+                    if ((sql[++pos] & 0xDF) == 'I' && (sql[++pos] & 0xDF) == 'G' && (sql[++pos] & 0xDF) == 'H' && sql[++pos] == '_' &&
+                            (sql[++pos] & 0xDF) == 'P' && (sql[++pos] & 0xDF) == 'R' && (sql[++pos] & 0xDF) == 'I' && (sql[++pos] & 0xDF) == 'O' && (sql[++pos] & 0xDF) == 'R' && (sql[++pos] & 0xDF) == 'I' && (sql[++pos] & 0xDF) == 'T' && (sql[++pos] & 0xDF) == 'Y' &&
                             (sql[++pos] == ' ' || sql[pos] == '\t' || sql[pos] == '\r' || sql[pos] == '\n')) {
                         //context.setSQLType(SQLContext.ALTER_SQL);
                         //by kaiz : just pass...
@@ -598,7 +612,7 @@ public class SQLParser {
                     switch (sql[++pos]) {
                         case 'G':
                         case 'g':
-                            if ((sql[++pos] & 0x5f) == 'N' && (sql[++pos] & 0x5f) == 'O' && sql[++pos] == 'R' && (sql[++pos] & 0x5f) == 'E' &&
+                            if ((sql[++pos] & 0xDF) == 'N' && (sql[++pos] & 0xDF) == 'O' && sql[++pos] == 'R' && (sql[++pos] & 0xDF) == 'E' &&
                                     (sql[++pos] == ' ' || sql[pos] == '\t' || sql[pos] == '\r' || sql[pos] == '\n')) {
                                 //context.setSQLType(SQLContext.ALTER_SQL);
                                 //by kaiz : just pass...
@@ -611,7 +625,7 @@ public class SQLParser {
                             break;
                         case 'N':
                         case 'n':
-                            if ((sql[++pos] & 0x5f) == 'T' && (sql[++pos] & 0x5f) == 'O' &&
+                            if ((sql[++pos] & 0xDF) == 'T' && (sql[++pos] & 0xDF) == 'O' &&
                                     (sql[++pos] == ' ' || sql[pos] == '\t' || sql[pos] == '\r' || sql[pos] == '\n')) {
                                 //context.setSQLType(SQLContext.ALTER_SQL);
                                 //by kaiz : just pass...
@@ -629,6 +643,15 @@ public class SQLParser {
                 case '\t':
                 case '\r':
                 case '\n':
+                    break;
+                case '#'://"#" 和"–- "属于单行注释，注释范围为该行的结尾
+                    SharpComment();
+                    break;
+                case '-':
+                    DoubleDashComment();
+                    break;
+                case '/':
+                    MultiLineComment();
                     break;
                 default:
                     tokenCount++;
@@ -649,7 +672,7 @@ public class SQLParser {
                 case 'i':
                     tokenCount++;
                     tempPos = pos;
-                    if ((sql[++pos] & 0x5f) == 'F' &&
+                    if ((sql[++pos] & 0xDF) == 'F' &&
                             (sql[++pos] == ' ' || sql[pos] == '\t' || sql[pos] == '\r' || sql[pos] == '\n')) {
                         //context.setSQLType(SQLContext.ALTER_SQL);
                         //by kaiz : just pass...
@@ -665,7 +688,7 @@ public class SQLParser {
                 case 'n':
                     tokenCount++;
                     tempPos = pos;
-                    if ((sql[++pos] & 0x5f) == 'O' && (sql[++pos] & 0x5f) == 'T' &&
+                    if ((sql[++pos] & 0xDF) == 'O' && (sql[++pos] & 0xDF) == 'T' &&
                             (sql[++pos] == ' ' || sql[pos] == '\t' || sql[pos] == '\r' || sql[pos] == '\n')) {
                         //context.setSQLType(SQLContext.ALTER_SQL);
                         //by kaiz : just pass...
@@ -681,7 +704,7 @@ public class SQLParser {
                 case 'e':
                     tokenCount++;
                     tempPos = pos;
-                    if ((sql[++pos] & 0x5f) == 'X' && (sql[++pos] & 0x5f) == 'I' && (sql[++pos] & 0x5f) == 'S' && sql[++pos] == 'T' && sql[++pos] == 'S' &&
+                    if ((sql[++pos] & 0xDF) == 'X' && (sql[++pos] & 0xDF) == 'I' && (sql[++pos] & 0xDF) == 'S' && sql[++pos] == 'T' && sql[++pos] == 'S' &&
                             (sql[++pos] == ' ' || sql[pos] == '\t' || sql[pos] == '\r' || sql[pos] == '\n')) {
                         //context.setSQLType(SQLContext.ALTER_SQL);
                         //by kaiz : just pass...
@@ -698,12 +721,59 @@ public class SQLParser {
                 case '\r':
                 case '\n':
                     break;
+                case '#'://"#" 和"–- "属于单行注释，注释范围为该行的结尾
+                    SharpComment();
+                    break;
+                case '-':
+                    DoubleDashComment();
+                    break;
+                case '/':
+                    MultiLineComment();
+                    break;
                 default:
                     tokenCount++;
                     context.setTblNameStart(pos);
                     resultSize = 1;
                     queue_pos++;
                     break parser_loop;
+            }
+        }
+    }
+
+    void DoubleDashComment() {
+        // 从‘-- ’序列到行尾。请注意‘-- ’(双破折号)注释风格要求第2个破折号后面至少跟一个空格符(例如空格、tab、换行符等等)。该语法与标准SQL注释语法稍有不同
+        //https://dev.mysql.com/doc/refman/5.7/en/comments.html
+        if (sql[++pos] == '-') {
+            byte maybeSpace = sql[++pos];
+            if (maybeSpace == ' ' || maybeSpace == '\t' || maybeSpace == '\r') {
+                while (pos < SQLLength) {
+                    if (sql[++pos] == '\n') {
+                        return;
+                    }
+                }
+            }
+        }
+    }
+
+    void SharpComment() {
+        while (++pos < SQLLength) {
+            if (sql[pos] == '\n') {
+                return;
+            }
+        }
+    }
+
+    /*
+    这种注释方式还有一种扩展，即当在注释中使用！加上版本号时，
+    只要mysql的当前版本等于或大于该版本号，则该注释中的sql语句将被mysql执行。
+    这种方式只适用于mysql数据库。不具有其他数据库的可移植性。
+    */
+    void MultiLineComment() {
+        if (sql[++pos] == '*') {
+            while (++pos < SQLLength) {
+                if (sql[pos] == '*' && sql[pos+1] == '/') {
+                    return;
+                }
             }
         }
     }

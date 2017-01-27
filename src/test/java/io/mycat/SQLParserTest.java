@@ -168,6 +168,18 @@ public class SQLParserTest extends TestCase {
         assertEquals(17, context.getTableCount());
     }
 
+    @Test
+    public void testNormalComment() {
+        String sql = "select * from tbl_A, -- 单行注释\n" +
+                "tbl_B b, #另一种单行注释\n" +
+                "/*\n" +
+                "tbl_C\n" +
+                "*/ tbl_D d;";
+        parser.parse(sql.getBytes(), context);
+        IntStream.range(0, context.getTableCount()).forEach(i -> System.out.println(context.getSchemaName(i)+'.'+context.getTableName(i)));
+        assertEquals(3, context.getTableCount());
+    }
+
 //    @Test
 //    public void testNormalTruncate() throws Exception {
 //        String sql = "Truncate TABLE IF EXISTS tbl_A;";

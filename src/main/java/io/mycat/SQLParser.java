@@ -292,6 +292,10 @@ public class SQLParser {
                             case '/':
                                 MultiLineComment();
                                 break;
+                            case '\'':
+                            case '"':
+                                QuoteString();
+                                break;
                             default:
                                 pos++;
                                 tokenCount++;
@@ -774,6 +778,18 @@ public class SQLParser {
                 if (sql[pos] == '*' && sql[pos+1] == '/') {
                     return;
                 }
+            }
+        }
+    }
+
+    void QuoteString() {
+        byte end = sql[pos];
+        while (++pos<SQLLength) {
+            if (sql[pos] == end) {
+                pos++;
+                return;
+            } else if (sql[pos]=='\\') {
+                pos++;
             }
         }
     }

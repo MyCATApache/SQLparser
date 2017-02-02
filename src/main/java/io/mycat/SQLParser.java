@@ -875,7 +875,7 @@ public class SQLParser {
     }
 
     /**
-     * 暂不支持数字前带-,-需要当作运算符处理
+     * 暂不支持数字前带+ -,+ -需要当作运算符处理
      *
      * @param bytes
      * @param sqlContext
@@ -890,7 +890,7 @@ public class SQLParser {
         tokenCount = 0;
         status_queue[queue_pos] = BASIC_PARSER;
         context.setCurBuffer(sql);
-        while (pos < SQLLength) {  //by kaiz : 考虑到将来可能要用unsafe直接访问，所以越界判断都提前了
+        while (pos < SQLLength) {
             switch (sql[pos]) {
                 case '0':
                     System.out.println("=> start " + pos);

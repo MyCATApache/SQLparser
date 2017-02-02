@@ -19,7 +19,12 @@ public class SQLParserTest extends TestCase {
         parser = new SQLParser();
         context = new SQLContext();
     }
-
+    @Test
+    public void testParseNumber() throws Exception {
+        String t = "123456 56789.123456789 0x61c88647 ";
+        byte[] bytes=t.getBytes();
+        parser.parseNumber(bytes, context);
+    }
     @Test
     public void testNormalSelect() throws Exception {
         String t = "SELECT * FROM a;# This comment continues to the end of line";

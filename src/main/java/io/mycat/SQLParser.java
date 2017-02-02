@@ -1,6 +1,9 @@
 package io.mycat;
 
+import com.alibaba.druid.sql.parser.CharTypes;
+
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 
 /**
  * Created by Kaiz on 2017/1/22.
@@ -771,9 +774,146 @@ public class SQLParser {
     void MultiLineComment() {
         if (sql[++pos] == '*') {
             while (++pos < SQLLength) {
-                if (sql[pos] == '*' && sql[pos+1] == '/') {
+                if (sql[pos] == '*' && sql[pos + 1] == '/') {
                     return;
                 }
+            }
+        }
+    }
+
+    /**
+     *
+     pos++;
+     ch = sql[++pos];
+     等价于
+     pos+=2;
+     ch = sql[pos];
+     */
+    void Number() {
+        int pos = this.pos;
+        byte ch = sql[pos];
+        if (ch == '-') {
+            pos+=2;
+            ch = sql[pos];
+        }
+        while (ch >= '0' && ch <= '9' && pos < SQLLength) {
+            ch = sql[++pos];
+        }
+        boolean isDouble = false;
+        if (ch == '.') {
+            if (sql[pos + 1] == '.') {
+                //Token.LITERAL_INT;
+                this.pos = pos - 1;
+                System.out.println("=> end   " + pos);
+                return;
+            }
+            pos+=2;
+            ch = sql[pos];
+            isDouble = true;
+            while (ch >= '0' && ch <= '9' && pos < SQLLength) {
+                ch = sql[++pos];
+            }
+        }
+        if (ch == 'e' || ch == 'E') {
+            pos+=2;
+            ch = sql[pos];
+            if (ch == '+' || ch == '-') {
+                pos+=2;
+                ch = sql[pos];
+            }
+            while (ch >= '0' && ch <= '9' && pos < SQLLength) {
+                ch = sql[++pos];
+            }
+            isDouble = true;
+        }
+        this.pos = pos - 1;
+        if (isDouble) {
+            //LITERAL_FLOAT;
+            System.out.println("=> end   " + this.pos);
+        } else {
+            //LITERAL_INT;
+            System.out.println("=> end   " + this.pos);
+        }
+
+    }
+
+    /**
+     *  c < 256
+     * @param c
+     * @return
+     */
+    public static boolean isHex(byte c) {
+        return hexFlags[c];
+    }
+    private static final boolean[] hexFlags = new boolean[256];
+    static {
+        char i;
+        int length=hexFlags.length;
+        for (i = 0; i < length; ++i) {
+            if (i >= 65 && i <= 70) {
+                hexFlags[i] = true;
+            } else if (i >= 97 && i <= 102) {
+                hexFlags[i] = true;
+            } else if (i >= 48 && i <= 57) {
+                hexFlags[i] = true;
+            }
+        }
+    }
+    public void HexaDecimal() {
+        int pos = this.pos;
+        byte ch = sql[pos];
+        if (ch == '-') {
+            pos+=2;
+            ch = sql[pos];
+        }
+        while (isHex(ch) && pos < SQLLength) {
+            ch = sql[++pos];
+        }
+        this.pos = pos;
+        System.out.println("=> end   " + this.pos);
+        //Token.LITERAL_HEX;
+    }
+
+    /**
+     * 暂不支持数字前带-,-需要当作运算符处理
+     *
+     * @param bytes
+     * @param sqlContext
+     */
+    void parseNumber(final byte[] bytes, SQLContext sqlContext) {
+        sql = bytes;
+        context = sqlContext;
+        SQLLength = sql.length - 1;
+        pos = 0;
+        resultSize = 1;
+        queue_pos = 0;
+        tokenCount = 0;
+        status_queue[queue_pos] = BASIC_PARSER;
+        context.setCurBuffer(sql);
+        while (pos < SQLLength) {  //by kaiz : 考虑到将来可能要用unsafe直接访问，所以越界判断都提前了
+            switch (sql[pos]) {
+                case '0':
+                    System.out.println("=> start " + pos);
+                    if (sql[pos + 1] == 'x') {
+                        pos += 2;
+                        HexaDecimal();
+                    } else {
+                        Number();
+                    }
+                    continue;
+                case '1':
+                case '2':
+                case '3':
+                case '4':
+                case '5':
+                case '6':
+                case '7':
+                case '8':
+                case '9':
+                    System.out.println("=> start " + pos);
+                    Number();
+                default:
+                    ++pos;
             }
         }
     }
@@ -822,5 +962,13 @@ public class SQLParser {
             }
         }
         System.out.print("min time : " + min);
+    }
+
+    public int getSQLLength() {
+        return SQLLength;
+    }
+
+    public int getResultSize() {
+        return resultSize;
     }
 }

@@ -21,6 +21,46 @@ public class SQLParserTest extends TestCase {
     }
 
     @Test
+    public void testLimitOFFSET() throws Exception {
+        String t = "Select * from Animals LIMIT 100 OFFSET 50";
+        byte[] bytes = t.getBytes();
+        parser.parse(bytes, context);
+        assertEquals(1, context.getTableCount());
+    }
+
+    @Test
+    public void testSubqueryLimit() throws Exception {
+        String t = "DELETE \n" +
+                "FROM posts \n" +
+                "WHERE id not in (\n" +
+                "      SELECT * FROM (\n" +
+                "            SELECT id \n" +
+                "            FROM posts \n" +
+                "            ORDER BY timestamp desc limit 0, 15\n" +
+                "      ) \n" +
+                "      as t) LIMIT ?, ?;";
+        byte[] bytes = t.getBytes();
+        parser.parse(bytes, context);
+        assertEquals(2, context.getTableCount());
+    }
+
+    @Test
+    public void testLimit5() throws Exception {
+        String t = "SELECT * FROM table LIMIT 5";
+        byte[] bytes = t.getBytes();
+        parser.parse(bytes, context);
+        assertEquals(1, context.getTableCount());
+    }
+
+    @Test
+    public void testLimitRange() throws Exception {
+        String t = "SELECT * FROM table LIMIT 95,-1";
+        byte[] bytes = t.getBytes();
+        parser.parse(bytes, context);
+        assertEquals(1, context.getTableCount());
+    }
+
+    @Test
     public void testNormalSelect() throws Exception {
         String t = "SELECT * FROM a;# This comment continues to the end of line";
         parser.parse(t.getBytes(), context);
@@ -31,7 +71,7 @@ public class SQLParserTest extends TestCase {
     public void testMultiTableSelect() throws Exception {
         String t = "SELECT a.*, b.* FROM tbl_A a,tbl_B b , tbl_C c;#This comment continues to the end of line\n ";
         parser.parse(t.getBytes(), context);
-        IntStream.range(0, context.getTableCount()).forEach(i -> System.out.println(context.getSchemaName(i)+'.'+context.getTableName(i)));
+        IntStream.range(0, context.getTableCount()).forEach(i -> System.out.println(context.getSchemaName(i) + '.' + context.getTableName(i)));
         assertEquals(3, context.getTableCount());
     }
 
@@ -46,7 +86,7 @@ public class SQLParserTest extends TestCase {
     public void testNestSelect() throws Exception {
         String sql = "SELECT a fROm ab             , ee.ff AS f,(SELECT a FROM `schema_bb`.`tbl_bb`,(SELECT a FROM ccc AS c, `dddd`));";
         parser.parse(sql.getBytes(), context);
-        IntStream.range(0, context.getTableCount()).forEach(i -> System.out.println(context.getSchemaName(i)+'.'+context.getTableName(i)));
+        IntStream.range(0, context.getTableCount()).forEach(i -> System.out.println(context.getSchemaName(i) + '.' + context.getTableName(i)));
         assertEquals(5, context.getTableCount());
         assertEquals("ab", context.getTableName(0));
         assertEquals("ff", context.getTableName(1));
@@ -157,14 +197,14 @@ public class SQLParserTest extends TestCase {
     @Test
     public void testCase02() throws Exception {
         parser.parse(sql1.getBytes(StandardCharsets.UTF_8), context);
-        IntStream.range(0, context.getTableCount()).forEach(i -> System.out.println(context.getSchemaName(i)+'.'+context.getTableName(i)));
+        IntStream.range(0, context.getTableCount()).forEach(i -> System.out.println(context.getSchemaName(i) + '.' + context.getTableName(i)));
         assertEquals(8, context.getTableCount());
     }
 
     @Test
     public void testCase03() throws Exception {
         parser.parse(sql2.getBytes(StandardCharsets.UTF_8), context);
-        IntStream.range(0, context.getTableCount()).forEach(i -> System.out.println(context.getSchemaName(i)+'.'+context.getTableName(i)));
+        IntStream.range(0, context.getTableCount()).forEach(i -> System.out.println(context.getSchemaName(i) + '.' + context.getTableName(i)));
         assertEquals(17, context.getTableCount());
     }
 
@@ -176,9 +216,10 @@ public class SQLParserTest extends TestCase {
                 "tbl_C\n" +
                 "*/ tbl_D d;";
         parser.parse(sql.getBytes(), context);
-        IntStream.range(0, context.getTableCount()).forEach(i -> System.out.println(context.getSchemaName(i)+'.'+context.getTableName(i)));
+        IntStream.range(0, context.getTableCount()).forEach(i -> System.out.println(context.getSchemaName(i) + '.' + context.getTableName(i)));
         assertEquals(3, context.getTableCount());
     }
+
 
     @Test
     public void testDoubleQuoteString() {
@@ -203,38 +244,38 @@ public class SQLParserTest extends TestCase {
 //        assertEquals(SQLContext.TRUNCATE_SQL, context.getSQLType());
 //        assertEquals("tbl_A", context.getTableName(0));
 //    }
-private static final String sql1 = "select t3.*,ztd3.TypeDetailName as UseStateName\n" +
-        "from\n" +
-        "( \n" +
-        " select t4.*,ztd4.TypeDetailName as AssistantUnitName\n" +
-        " from\n" +
-        " (\n" +
-        "  select t2.*,ztd2.TypeDetailName as UnitName \n" +
-        "  from\n" +
-        "  (\n" +
-        "   select t1.*,ztd1.TypeDetailName as MaterielAttributeName \n" +
-        "   from \n" +
-        "   (\n" +
-        "    select m.*,r.RoutingName,u.username,mc.MoldClassName\n" +
-        "    from dbo.D_Materiel as m\n" +
-        "    left join dbo.D_Routing as r\n" +
-        "    on m.RoutingID=r.RoutingID\n" +
-        "    left join dbo.D_MoldClass as mc\n" +
-        "    on m.MoldClassID=mc.MoldClassID\n" +
-        "    left join dbo.D_User as u\n" +
-        "    on u.UserId=m.AddUserID\n" +
-        "   )as t1\n" +
-        "   left join dbo.D_Type_Detail as ztd1 \n" +
-        "   on t1.MaterielAttributeID=ztd1.TypeDetailID\n" +
-        "  )as t2\n" +
-        "  left join dbo.D_Type_Detail as ztd2 \n" +
-        "  on t2.UnitID=ztd2.TypeDetailID\n" +
-        " ) as t4\n" +
-        " left join dbo.D_Type_Detail as ztd4 \n" +
-        " on t4.AssistantUnitID=ztd4.TypeDetailID\n" +
-        ")as t3\n" +
-        "left join dbo.D_Type_Detail as ztd3 \n" +
-        "on t3.UseState=ztd3.TypeDetailID";
+    private static final String sql1 = "select t3.*,ztd3.TypeDetailName as UseStateName\n" +
+            "from\n" +
+            "( \n" +
+            " select t4.*,ztd4.TypeDetailName as AssistantUnitName\n" +
+            " from\n" +
+            " (\n" +
+            "  select t2.*,ztd2.TypeDetailName as UnitName \n" +
+            "  from\n" +
+            "  (\n" +
+            "   select t1.*,ztd1.TypeDetailName as MaterielAttributeName \n" +
+            "   from \n" +
+            "   (\n" +
+            "    select m.*,r.RoutingName,u.username,mc.MoldClassName\n" +
+            "    from dbo.D_Materiel as m\n" +
+            "    left join dbo.D_Routing as r\n" +
+            "    on m.RoutingID=r.RoutingID\n" +
+            "    left join dbo.D_MoldClass as mc\n" +
+            "    on m.MoldClassID=mc.MoldClassID\n" +
+            "    left join dbo.D_User as u\n" +
+            "    on u.UserId=m.AddUserID\n" +
+            "   )as t1\n" +
+            "   left join dbo.D_Type_Detail as ztd1 \n" +
+            "   on t1.MaterielAttributeID=ztd1.TypeDetailID\n" +
+            "  )as t2\n" +
+            "  left join dbo.D_Type_Detail as ztd2 \n" +
+            "  on t2.UnitID=ztd2.TypeDetailID\n" +
+            " ) as t4\n" +
+            " left join dbo.D_Type_Detail as ztd4 \n" +
+            " on t4.AssistantUnitID=ztd4.TypeDetailID\n" +
+            ")as t3\n" +
+            "left join dbo.D_Type_Detail as ztd3 \n" +
+            "on t3.UseState=ztd3.TypeDetailID";
 
 
     private static final String sql2 = "Select d.Fabric_No,\n" +

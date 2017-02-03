@@ -198,6 +198,7 @@ public class SQLParser {
                                         if ((sql[++pos] & 0xDF) == 'M' && (sql[++pos] & 0xDF) == 'I' && (sql[++pos] & 0xDF) == 'T' &&
                                                 (sql[++pos] == ' ' || sql[pos] == '\t' || sql[pos] == '\r' || sql[pos] == '\n')) {
                                             context.setSQLType(SQLContext.LOCK_SQL);
+                                            limitClause();
                                         } else {
                                             findNextToken(false);
                                         }
@@ -775,13 +776,165 @@ public class SQLParser {
     void MultiLineComment() {
         if (sql[++pos] == '*') {
             while (++pos < SQLLength) {
-                if (sql[pos] == '*' && sql[pos+1] == '/') {
+                if (sql[pos] == '*' && sql[pos + 1] == '/') {
                     return;
                 }
             }
         }
     }
 
+
+    /**
+     * pos++;
+     * ch = sql[++pos];
+     * 等价于
+     * pos+=2;
+     * ch = sql[pos];
+     */
+    void Number() {
+        int pos = this.pos;
+        byte ch = sql[pos];
+        boolean has = true;
+        if (ch == '-' || ch == '+') {
+            pos += 1;
+            ch = sql[pos];
+        }
+        while ('0' <= ch && ch <= '9' && has) {
+            if (pos <= SQLLength) {
+                ch = sql[pos];
+                ++pos;
+            } else {
+                has = false;
+            }
+        }
+        boolean isDouble = false;
+        if ((ch == '.') && has) {
+            if (sql[pos + 1] == '.') {
+                this.pos = pos - 1;
+                return;
+            }
+            pos += 2;
+            ch = sql[pos];
+            isDouble = true;
+            while ('0' <= ch && ch <= '9' && has) {
+                if (pos <= SQLLength) {
+                    ch = sql[pos];
+                    ++pos;
+                } else {
+                    has = false;
+                }
+            }
+        }
+        if ((ch == 'e' || ch == 'E') && has) {
+            pos += 2;
+            ch = sql[pos];
+            if (ch == '+' || ch == '-') {
+                pos += 2;
+                ch = sql[pos];
+            }
+            while (('0' <= ch && ch <= '9') && has) {
+                if (pos <= SQLLength) {
+                    ch = sql[pos];
+                    ++pos;
+                } else {
+                    has = false;
+                }
+            }
+            isDouble = true;
+        }
+        this.pos = has ? pos - 1 : pos;
+        if (isDouble) {
+            //LITERAL_FLOAT;
+        } else {
+            //LITERAL_INT;
+        }
+
+    }
+
+
+    void limitClause() {
+        int argCount = 0;
+        while (pos < SQLLength) {
+            switch (sql[++pos]) {
+                case '+':
+                case '-':
+                    byte digit = sql[pos + 1];
+                    if ('0' <= digit && digit <= '9') {
+                        int pos = this.pos;
+                        Number();
+                        limitNumberCollector(pos, this.pos);
+                        ++argCount;
+                    } else if (digit == '-') {
+                        DoubleDashComment();
+                    }
+                    break;
+                case '0':
+                case '1':
+                case '2':
+                case '3':
+                case '4':
+                case '5':
+                case '6':
+                case '7':
+                case '8':
+                case '9': {
+                    int pos = this.pos;
+                    Number();
+                    limitNumberCollector(pos, this.pos);
+                    ++argCount;
+                    break;
+                }
+                case '?'://PARAM_MARKER
+                    limitParamMarkerCollector(this.pos, this.pos + 1);
+                    ++argCount;
+                    break;
+                case '#'://"#" 和"–- "属于单行注释，注释范围为该行的结尾
+                    SharpComment();
+                    break;
+                case '/':
+                    MultiLineComment();
+                    break;
+                case ' ':
+                case '\r':
+                case '\t':
+                case '\n':
+                    break;
+                default:
+                    if (argCount == 1) {
+                        return;
+                    } else {
+                        //Identifier
+                        ++argCount;
+                    }
+                    break;
+                case 'O':
+                case 'o': {
+                    int pos = this.pos;
+                    if ((sql[++pos] & 0xDF) == 'F' && (sql[++pos] & 0xDF) == 'F' && (sql[++pos] & 0xDF) == 'S' && (sql[++pos] & 0xDF) == 'E' && (sql[++pos] & 0xDF) == 'T' &&
+                            (sql[++pos] == ' ' || sql[pos] == '\t' || sql[pos] == '\r' || sql[pos] == '\n')) {
+                        if (argCount == 1) {
+                            this.pos = pos;
+                            //goto    case ','
+                        } else {
+                            //offset 的普通字符串 ,非关键字,异常路径
+                        }
+                    } else {
+                        //Identifier
+                        continue;
+                    }
+                }
+                case ',':
+                    if (argCount == 1) {
+                        continue;
+                    } else {
+                        //异常路径
+                    }
+            }
+            if (argCount == 2) {
+                return;
+            }
+        }
+    }
     void QuoteString() {
         byte end = sql[pos];
         while (++pos<SQLLength) {
@@ -792,6 +945,14 @@ public class SQLParser {
                 pos++;
             }
         }
+    }
+
+    final void limitParamMarkerCollector(int start, int end) {
+        System.out.println(new String(sql, start, end - start));
+    }
+
+    final void limitNumberCollector(int start, int end) {
+        System.out.println(new String(sql, start, end - start));
     }
 
     void ReturnBasicParse() {
@@ -838,5 +999,13 @@ public class SQLParser {
             }
         }
         System.out.print("min time : " + min);
+    }
+
+    public int getSQLLength() {
+        return SQLLength;
+    }
+
+    public int getResultSize() {
+        return resultSize;
     }
 }

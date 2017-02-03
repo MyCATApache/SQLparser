@@ -805,9 +805,7 @@ public class SQLParser {
         boolean isDouble = false;
         if ((ch == '.') && has) {
             if (sql[pos + 1] == '.') {
-                //Token.LITERAL_INT;
                 this.pos = pos - 1;
-                System.out.println("=> end   " + pos);
                 return;
             }
             pos += 2;

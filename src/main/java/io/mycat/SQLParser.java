@@ -790,7 +790,7 @@ public class SQLParser {
         int pos = this.pos;
         byte ch = sql[pos];
         boolean has = true;
-        if (ch == '-') {
+        if (ch == '-' || ch == '+') {
             pos += 1;
             ch = sql[pos];
         }
@@ -848,101 +848,24 @@ public class SQLParser {
 
     }
 
-    /**
-     * c < 256
-     *
-     * @param c
-     * @return
-     */
-    public static boolean isHex(byte c) {
-        return hexFlags[c];
-    }
 
-    private static final boolean[] hexFlags = new boolean[256];
-
-    static {
-        char i;
-        int length = hexFlags.length;
-        for (i = 0; i < length; ++i) {
-            if (i >= 65 && i <= 70) {
-                hexFlags[i] = true;
-            } else if (i >= 97 && i <= 102) {
-                hexFlags[i] = true;
-            } else if (i >= 48 && i <= 57) {
-                hexFlags[i] = true;
-            }
-        }
-    }
-
-    public void HexaDecimal() {
-        int pos = this.pos;
-        byte ch = sql[pos];
-        if (ch == '-') {
-            pos += 2;
-            ch = sql[pos];
-        }
-        while (isHex(ch) && pos < SQLLength) {
-            ch = sql[++pos];
-        }
-        this.pos = pos;
-        System.out.println("=> end   " + this.pos);
-        //Token.LITERAL_HEX;
-    }
-
-    /**
-     * limit_clause:
-     * LIMIT_SYMBOL limit_options
-     */
     void limitClause() {
-        int argCount=0;
-          /*
-            limit_option:
-	        identifier
-	        | PARAM_MARKER
-	        | ULONGLONG_NUMBER
-	        | LONG_NUMBER
-	        | INT_NUMBER
-         */
-        // System.out.println("=> limitClause");
+        int argCount = 0;
         while (pos < SQLLength) {
             switch (sql[++pos]) {
                 case '+':
                 case '-':
                     byte digit = sql[pos + 1];
-                    if ('0' < digit && digit <= '9') {
+                    if ('0' <= digit && digit <= '9') {
                         int pos = this.pos;
                         Number();
                         limitNumberCollector(pos, this.pos);
-                    }
-//16进制支持例子
-//                    else if (digit == '0') {
-//                        byte x = sql[pos + 2];
-//                        if ((x & 0xDF) == 'X') {
-//                            int pos = this.pos;
-//                            pos += 2;
-//                            HexaDecimal();
-//                            limitNumberCollector(pos,this.pos);
-//                        }
-//                    }
-
-                    else if (digit == '-') {
+                        ++argCount;
+                    } else if (digit == '-') {
                         DoubleDashComment();
                     }
                     break;
                 case '0':
-// 16进制支持例子
-//                {
-//                    int pos = this.pos;
-//                    byte x = sql[pos + 1];
-//                    if ((x & 0xDF) == 'X') {
-//                        pos += 2;
-//                        HexaDecimal();
-//                    } else {
-//                        Number();
-//                    }
-//                    limitCollector(pos,this.pos);
-//                    break;
-//                }
                 case '1':
                 case '2':
                 case '3':
@@ -955,12 +878,12 @@ public class SQLParser {
                     int pos = this.pos;
                     Number();
                     limitNumberCollector(pos, this.pos);
+                    ++argCount;
                     break;
                 }
                 case '?'://PARAM_MARKER
-                    limitParamMarkerCollector(this.pos, this.pos);
-                    break;
-                case ',':
+                    limitParamMarkerCollector(this.pos, this.pos + 1);
+                    ++argCount;
                     break;
                 case '#'://"#" 和"–- "属于单行注释，注释范围为该行的结尾
                     SharpComment();
@@ -972,10 +895,42 @@ public class SQLParser {
                 case '\r':
                 case '\t':
                 case '\n':
+                    break;
                 default:
+                    if (argCount == 1) {
+                        return;
+                    } else {
+                        //Identifier
+                        ++argCount;
+                    }
+                    break;
+                case 'O':
+                case 'o': {
+                    int pos = this.pos;
+                    if ((sql[++pos] & 0xDF) == 'F' && (sql[++pos] & 0xDF) == 'F' && (sql[++pos] & 0xDF) == 'S' && (sql[++pos] & 0xDF) == 'E' && (sql[++pos] & 0xDF) == 'T' &&
+                            (sql[++pos] == ' ' || sql[pos] == '\t' || sql[pos] == '\r' || sql[pos] == '\n')) {
+                        if (argCount == 1) {
+                            this.pos = pos;
+                            //goto    case ','
+                        } else {
+                            //offset 的普通字符串 ,非关键字,异常路径
+                        }
+                    } else {
+                        //Identifier
+                        continue;
+                    }
+                }
+                case ',':
+                    if (argCount == 1) {
+                        continue;
+                    } else {
+                        //异常路径
+                    }
+            }
+            if (argCount == 2) {
+                return;
             }
         }
-        //  System.out.println("=> limitClause end");
     }
 
     final void limitParamMarkerCollector(int start, int end) {
@@ -985,11 +940,6 @@ public class SQLParser {
     final void limitNumberCollector(int start, int end) {
         System.out.println(new String(sql, start, end - start));
     }
-
-    final void limitIdentifierCollector(int start, int end) {
-        System.out.println(new String(sql, start, end - start));
-    }
-
 
     void ReturnBasicParse() {
         status_queue[queue_pos] = BASIC_PARSER;

@@ -1,9 +1,6 @@
 package io.mycat;
 
-import com.alibaba.druid.sql.parser.CharTypes;
-
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
 
 /**
  * Created by Kaiz on 2017/1/22.
@@ -201,6 +198,7 @@ public class SQLParser {
                                         if ((sql[++pos] & 0xDF) == 'M' && (sql[++pos] & 0xDF) == 'I' && (sql[++pos] & 0xDF) == 'T' &&
                                                 (sql[++pos] == ' ' || sql[pos] == '\t' || sql[pos] == '\r' || sql[pos] == '\n')) {
                                             context.setSQLType(SQLContext.LOCK_SQL);
+                                            limitClause();
                                         } else {
                                             findNextToken(false);
                                         }
@@ -782,73 +780,89 @@ public class SQLParser {
     }
 
     /**
-     *
-     pos++;
-     ch = sql[++pos];
-     等价于
-     pos+=2;
-     ch = sql[pos];
+     * pos++;
+     * ch = sql[++pos];
+     * 等价于
+     * pos+=2;
+     * ch = sql[pos];
      */
     void Number() {
         int pos = this.pos;
         byte ch = sql[pos];
+        boolean has = true;
         if (ch == '-') {
-            pos+=2;
+            pos += 1;
             ch = sql[pos];
         }
-        while (ch >= '0' && ch <= '9' && pos < SQLLength) {
-            ch = sql[++pos];
+        while ('0' <= ch && ch <= '9' && has) {
+            if (pos <= SQLLength) {
+                ch = sql[pos];
+                ++pos;
+            } else {
+                has = false;
+            }
         }
         boolean isDouble = false;
-        if (ch == '.') {
+        if ((ch == '.') && has) {
             if (sql[pos + 1] == '.') {
                 //Token.LITERAL_INT;
                 this.pos = pos - 1;
                 System.out.println("=> end   " + pos);
                 return;
             }
-            pos+=2;
+            pos += 2;
             ch = sql[pos];
             isDouble = true;
-            while (ch >= '0' && ch <= '9' && pos < SQLLength) {
-                ch = sql[++pos];
+            while ('0' <= ch && ch <= '9' && has) {
+                if (pos <= SQLLength) {
+                    ch = sql[pos];
+                    ++pos;
+                } else {
+                    has = false;
+                }
             }
         }
-        if (ch == 'e' || ch == 'E') {
-            pos+=2;
+        if ((ch == 'e' || ch == 'E') && has) {
+            pos += 2;
             ch = sql[pos];
             if (ch == '+' || ch == '-') {
-                pos+=2;
+                pos += 2;
                 ch = sql[pos];
             }
-            while (ch >= '0' && ch <= '9' && pos < SQLLength) {
-                ch = sql[++pos];
+            while (('0' <= ch && ch <= '9') && has) {
+                if (pos <= SQLLength) {
+                    ch = sql[pos];
+                    ++pos;
+                } else {
+                    has = false;
+                }
             }
             isDouble = true;
         }
-        this.pos = pos - 1;
+        this.pos = has ? pos - 1 : pos;
         if (isDouble) {
             //LITERAL_FLOAT;
-            System.out.println("=> end   " + this.pos);
         } else {
             //LITERAL_INT;
-            System.out.println("=> end   " + this.pos);
         }
 
     }
 
     /**
-     *  c < 256
+     * c < 256
+     *
      * @param c
      * @return
      */
     public static boolean isHex(byte c) {
         return hexFlags[c];
     }
+
     private static final boolean[] hexFlags = new boolean[256];
+
     static {
         char i;
-        int length=hexFlags.length;
+        int length = hexFlags.length;
         for (i = 0; i < length; ++i) {
             if (i >= 65 && i <= 70) {
                 hexFlags[i] = true;
@@ -859,11 +873,12 @@ public class SQLParser {
             }
         }
     }
+
     public void HexaDecimal() {
         int pos = this.pos;
         byte ch = sql[pos];
         if (ch == '-') {
-            pos+=2;
+            pos += 2;
             ch = sql[pos];
         }
         while (isHex(ch) && pos < SQLLength) {
@@ -875,32 +890,59 @@ public class SQLParser {
     }
 
     /**
-     * 暂不支持数字前带+ -,+ -需要当作运算符处理
-     *
-     * @param bytes
-     * @param sqlContext
+     * limit_clause:
+     * LIMIT_SYMBOL limit_options
      */
-    void parseNumber(final byte[] bytes, SQLContext sqlContext) {
-        sql = bytes;
-        context = sqlContext;
-        SQLLength = sql.length - 1;
-        pos = 0;
-        resultSize = 1;
-        queue_pos = 0;
-        tokenCount = 0;
-        status_queue[queue_pos] = BASIC_PARSER;
-        context.setCurBuffer(sql);
+    void limitClause() {
+        int argCount=0;
+          /*
+            limit_option:
+	        identifier
+	        | PARAM_MARKER
+	        | ULONGLONG_NUMBER
+	        | LONG_NUMBER
+	        | INT_NUMBER
+         */
+        // System.out.println("=> limitClause");
         while (pos < SQLLength) {
-            switch (sql[pos]) {
-                case '0':
-                    System.out.println("=> start " + pos);
-                    if (sql[pos + 1] == 'x') {
-                        pos += 2;
-                        HexaDecimal();
-                    } else {
+            switch (sql[++pos]) {
+                case '+':
+                case '-':
+                    byte digit = sql[pos + 1];
+                    if ('0' < digit && digit <= '9') {
+                        int pos = this.pos;
                         Number();
+                        limitNumberCollector(pos, this.pos);
                     }
-                    continue;
+//16进制支持例子
+//                    else if (digit == '0') {
+//                        byte x = sql[pos + 2];
+//                        if ((x & 0xDF) == 'X') {
+//                            int pos = this.pos;
+//                            pos += 2;
+//                            HexaDecimal();
+//                            limitNumberCollector(pos,this.pos);
+//                        }
+//                    }
+
+                    else if (digit == '-') {
+                        DoubleDashComment();
+                    }
+                    break;
+                case '0':
+// 16进制支持例子
+//                {
+//                    int pos = this.pos;
+//                    byte x = sql[pos + 1];
+//                    if ((x & 0xDF) == 'X') {
+//                        pos += 2;
+//                        HexaDecimal();
+//                    } else {
+//                        Number();
+//                    }
+//                    limitCollector(pos,this.pos);
+//                    break;
+//                }
                 case '1':
                 case '2':
                 case '3':
@@ -909,14 +951,45 @@ public class SQLParser {
                 case '6':
                 case '7':
                 case '8':
-                case '9':
-                    System.out.println("=> start " + pos);
+                case '9': {
+                    int pos = this.pos;
                     Number();
+                    limitNumberCollector(pos, this.pos);
+                    break;
+                }
+                case '?'://PARAM_MARKER
+                    limitParamMarkerCollector(this.pos, this.pos);
+                    break;
+                case ',':
+                    break;
+                case '#'://"#" 和"–- "属于单行注释，注释范围为该行的结尾
+                    SharpComment();
+                    break;
+                case '/':
+                    MultiLineComment();
+                    break;
+                case ' ':
+                case '\r':
+                case '\t':
+                case '\n':
                 default:
-                    ++pos;
             }
         }
+        //  System.out.println("=> limitClause end");
     }
+
+    final void limitParamMarkerCollector(int start, int end) {
+        System.out.println(new String(sql, start, end - start));
+    }
+
+    final void limitNumberCollector(int start, int end) {
+        System.out.println(new String(sql, start, end - start));
+    }
+
+    final void limitIdentifierCollector(int start, int end) {
+        System.out.println(new String(sql, start, end - start));
+    }
+
 
     void ReturnBasicParse() {
         status_queue[queue_pos] = BASIC_PARSER;

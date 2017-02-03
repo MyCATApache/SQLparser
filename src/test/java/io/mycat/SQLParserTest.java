@@ -19,11 +19,32 @@ public class SQLParserTest extends TestCase {
         parser = new SQLParser();
         context = new SQLContext();
     }
+
     @Test
-    public void testParseNumber() throws Exception {
-        String t = "123456 56789.123456789 0x61c88647 ";
+    public void testSubqueryLimit() throws Exception {
+        String t = "DELETE \n" +
+                "FROM posts \n" +
+                "WHERE id not in (\n" +
+                "      SELECT * FROM (\n" +
+                "            SELECT id \n" +
+                "            FROM posts \n" +
+                "            ORDER BY timestamp desc limit 0, 15\n" +
+                "      ) \n" +
+                "      as t) LIMIT ?, ?;";
         byte[] bytes=t.getBytes();
-        parser.parseNumber(bytes, context);
+        parser.parse(bytes, context);
+    }
+    @Test
+    public void testLimit5() throws Exception {
+        String t = "SELECT * FROM table LIMIT 5";
+        byte[] bytes=t.getBytes();
+        parser.parse(bytes, context);
+    }
+    @Test
+    public void testLimitRange() throws Exception {
+        String t = "SELECT * FROM table LIMIT 95,-1";
+        byte[] bytes=t.getBytes();
+        parser.parse(bytes, context);
     }
     @Test
     public void testNormalSelect() throws Exception {

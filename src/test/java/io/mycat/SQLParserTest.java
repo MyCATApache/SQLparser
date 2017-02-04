@@ -84,7 +84,7 @@ public class SQLParserTest extends TestCase {
 
     @Test
     public void testNestSelect() throws Exception {
-        String sql = "SELECT a fROm ab             , ee.ff AS f,(SELECT a FROM `schema_bb`.`tbl_bb`,(SELECT a FROM ccc AS c, `dddd`));/* 注释 */";
+        String sql = "SELECT a fROm ab             , ee.ff AS f,(SELECT a FROM `schema_bb`.`tbl_bb`,(SELECT a FROM ccc AS c, `dddd`));";
         parser.parse(sql.getBytes(), context);
         IntStream.range(0, context.getTableCount()).forEach(i -> System.out.println(context.getSchemaName(i) + '.' + context.getTableName(i)));
         assertEquals(5, context.getTableCount());
@@ -220,7 +220,24 @@ public class SQLParserTest extends TestCase {
         assertEquals(3, context.getTableCount());
     }
 
-    //    @Test
+
+    @Test
+    public void testDoubleQuoteString() {
+        String sql = "select id as \"select * from fake_tbl;\" from tbl_A;";
+        parser.parse(sql.getBytes(), context);
+        assertEquals(1, context.getTableCount());
+        assertEquals("tbl_A", context.getTableName(0));
+    }
+
+    @Test
+    public void testSingleQuoteString() {
+        String sql = "select id as 'select * from fake_tbl;' from tbl_A;";
+        parser.parse(sql.getBytes(), context);
+        assertEquals(1, context.getTableCount());
+        assertEquals("tbl_A", context.getTableName(0));
+    }
+
+//    @Test
 //    public void testNormalTruncate() throws Exception {
 //        String sql = "Truncate TABLE IF EXISTS tbl_A;";
 //        parser.parse(sql.getBytes(), context);

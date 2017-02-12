@@ -6,7 +6,7 @@ package io.mycat;
  */
 
 
-public class SQLReader {
+final class SQLReader {
     byte[] sql;
     int pos;
     int sqlLength;
@@ -16,7 +16,7 @@ public class SQLReader {
     int tblSize;
     final byte ICMask = (byte)0xDF;//ignore case mask;
 
-    public void init(byte[] src) {
+    final void init(byte[] src) {
         pos = 0;
         this.sql = src;
         sqlLength = this.sql.length - 1;
@@ -26,110 +26,91 @@ public class SQLReader {
         tblSize = 0;
     }
 
-    public byte cur() {
+    final byte cur() {
         return sql[pos];
     }
 
-    public byte icCur() {
+    final byte icCur() {
         return (byte)(sql[pos] & ICMask);
     }
 
-    public boolean icCurCharIs(char c) {
+    final boolean icCurCharIs(char c) {
         return (byte)(sql[pos] & ICMask) == c;
     }
 
-    public void move() {
+    final void move() {
         ++pos;
     }
 
-    public byte nextChar() {
+    final byte nextChar() {
         byte c = sql[++pos];
         return c;
     }
 
-    public byte icNextChar() {
+    final byte icNextChar() {
         byte c = (byte)(sql[++pos] & ICMask);
         return c;
     }
 
-    boolean icNextCharIs(char c) {
+    final boolean icNextCharIs(char c) {
         byte s = (byte)(sql[++pos] & ICMask);
         return s == c;
     }
 
-    boolean nextCharIs(char c) {
+    final boolean nextCharIs(char c) {
         byte s = sql[++pos];
         return s == c;
     }
 
-    public void readTblName() {
+    final void readTblName() {
         pos++;
     }
 
-    public boolean hasNext() {
+    final boolean hasNext() {
         return pos < sqlLength;
     }
 
-    public boolean isSelectToken() {
-        if ( icNextCharIs('L') && icNextCharIs('E') && icNextCharIs('C') && icNextCharIs('T') &&
-                nextIsBlank() ) {
-            return true;
-        } else {
-            return false;
-        }
+    final boolean isSelectToken() {
+        return icNextCharIs('L') && icNextCharIs('E') && icNextCharIs('C') && icNextCharIs('T') &&
+                nextIsBlank();
     }
 
-    public boolean isShowToken() {
-        if ( icNextCharIs('O') && icNextCharIs('W') &&
-                nextIsBlank() ) {
-            return true;
-        } else {
-            return false;
-        }
+    final boolean isShowToken() {
+        return icNextCharIs('O') && icNextCharIs('W') &&
+                nextIsBlank();
     }
 
-    public boolean isFromToken() {
-        if (icNextCharIs('R') && icNextCharIs('O') && icNextCharIs('M') &&
-                nextIsBlank() ) {
-            return true;
-        } else {
-            return false;
-        }
+    final boolean isFromToken() {
+        return icNextCharIs('R') && icNextCharIs('O') && icNextCharIs('M') &&
+                nextIsBlank();
     }
 
-    public boolean isJoinToken() {
-        if (icNextCharIs('O') && icNextCharIs('I')  && icNextCharIs('N') &&
-                nextIsBlank() ) {
-            return true;
-        } else {
-            return false;
-        }
+    final boolean isJoinToken() {
+        return icNextCharIs('O') && icNextCharIs('I') && icNextCharIs('N') &&
+                nextIsBlank();
     }
 
-    public boolean isMultiLineCommentEndToken() {
-        if (nextCharIs('*') && sql[pos + 1] == '/') {
-            return true;
-        }
-        return false;
+    final boolean isMultiLineCommentEndToken() {
+        return nextCharIs('*') && sql[pos + 1] == '/';
     }
 
-    public void skipBlank() {
+    final void skipBlank() {
 
     }
 
-    public void readNumber() {
+    final void readNumber() {
 
     }
 
-    public void findNextToken() {
+    final void findNextToken() {
 
     }
 
-    public int getPos() {
+    final int getPos() {
         return pos;
     }
 
-    boolean nextIsBlank() {
+    final boolean nextIsBlank() {
         return (sql[++pos] == ' ' || sql[pos] == '\t' || sql[pos] == '\r' || sql[pos] == '\n');
     }
 }

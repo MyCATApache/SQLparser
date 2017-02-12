@@ -14,7 +14,7 @@ public class SQLReader {
     long tblHash;
     int tblPos;
     int tblSize;
-    byte ICMask = (byte)0xDF;//ignore case mask;
+    final byte ICMask = (byte)0xDF;//ignore case mask;
 
     public void init(byte[] src) {
         pos = 0;

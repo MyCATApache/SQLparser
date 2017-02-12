@@ -30,6 +30,9 @@ public class SQLContext {
     private byte sqlType;
     private int tblResultArraySize = 128;//todo : 测试期先写死，后期考虑从设置参数中读取 by kaiz
     private int schemaResultArraySize = 64;//todo : 测试期先写死，后期考虑从设置参数中读取 by kaiz
+    private byte annotationType;
+    private short sqlCount;
+
 
     //DDL
     public static final byte CREATE_SQL = 1;
@@ -60,6 +63,15 @@ public class SQLContext {
     public static final byte ROLLBACK_SQL = 11;
     public static final byte SET_TRANSACTION_SQL = 12;
 
+    //ANNOTATION TYPE
+    public static final byte ANNOTATION_BALANCE = 1;
+    public static final byte ANNOTATION_SQL = 2;
+    public static final byte ANNOTATION_DB_TYPE = 3;
+    public static final byte ANNOTATION_SCHEMA = 4;
+    public static final byte ANNOTATION_DATANODE = 5;
+    public static final byte ANNOTATION_CATLET = 6;
+
+
     public SQLContext() {
         tblResult = new int[tblResultArraySize];
         schemaResult = new int[schemaResultArraySize];
@@ -75,6 +87,7 @@ public class SQLContext {
         Arrays.fill(schemaResult, 0);
         sqlHash = 0;
         sqlType = 0;
+        annotationType = 0;
     }
 
     public void setTblNameStart(int pos) {
@@ -136,5 +149,18 @@ public class SQLContext {
     }
 
     public byte getSQLType() { return this.sqlType; }
+
+    public boolean hasAnnotation() { //by kaiz : 是否包含注解，此处还需要完善
+        return false;
+    }
+
+    public void setAnnotationType(byte type) {
+        this.annotationType = type;
+    }
+
+    public void setAnnotationStart(int pos) {}
+    public void setAnnotationSize(int size) {}
+    public byte getAnnotationType() { return this.annotationType; }
+    public String getAnnotationContent() { return null; } //by kaiz : 返回注解等号后面的内容
 
 }

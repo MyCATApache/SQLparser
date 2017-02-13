@@ -173,8 +173,7 @@ public class MatchMethodGenerator {
         map.keySet().forEach((s) -> {
             String keyword = s.toLowerCase();
             keyword = String.valueOf(keyword.charAt(0)).toUpperCase() + keyword.substring(1, keyword.length());
-            System.out.format("final void skip%sToken() {\n" +
-                    "     pos+=%d;\n}%n", keyword, keyword.length());
+            System.out.format("final void skip%sToken() {\npos+=%d;\n}%n", keyword, keyword.length());
         });
     }
 }

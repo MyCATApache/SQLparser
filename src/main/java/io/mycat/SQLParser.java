@@ -7,8 +7,8 @@ import java.nio.charset.StandardCharsets;
  * 考虑设计：1. 第一遍生成 a. sql类型; b. 表名列表; c. 库名列表; d. sql/表名/库名hash值; e. 所有节点位置数组
  * 2. 第二遍生成 a. 查询和子查询之间的关联; b. 查询字段和表之间的关联; c. 获取where判断条件
  * 2017/2/12 优化前效率 SQLBenchmark.SQLParserTest  thrpt   10  1290172.064 ± 36612.015  ops/s
- *      添加 reader 后：SQLBenchmark.SQLParserTest  thrpt   10  1271515.925 ± 39180.293  ops/s
- *      将sql[]和pos操作封装到reader当中对性能影响非常小，接下来会将所有token判断都添加到reader当中
+ * 添加 reader 后：SQLBenchmark.SQLParserTest  thrpt   10  1271515.925 ± 39180.293  ops/s
+ * 将sql[]和pos操作封装到reader当中对性能影响非常小，接下来会将所有token判断都添加到reader当中
  */
 public class SQLParser {
     private final byte BASIC_PARSER = 0;
@@ -22,7 +22,7 @@ public class SQLParser {
     private final byte QUEUE_SIZE = 16;
     private byte[] status_queue = new byte[QUEUE_SIZE]; //by kaiz : 为扩展复杂的解析预留空间，考虑到表名之后的修饰token可能无法预期，将可能需要处理的步骤状态值压入队列中，再从队列中逐一处理
     private byte queue_pos = 0;
-//    private int pos;
+    //    private int pos;
     //private int SQLLength;
     private int resultSize = 1;
     //private byte[] sql;
@@ -54,7 +54,7 @@ public class SQLParser {
                             case 'F'://FROM
                             case 'f':
                                 tokenCount++;//by kaiz : 所有的token遍历时，都记得要加 tokenCount，在后面token距离计算时会用到
-                                if (reader.isFromToken() ) {
+                                if (reader.isFromToken()) {
                                     //by kaiz : 将接下来需要处理的状态按顺序加入队列
                                     status_queue[0] = TBL_NAME_PARSER;
                                     status_queue[1] = TBL_ALIAS_FINDER;
@@ -199,7 +199,7 @@ public class SQLParser {
                                         if (reader.icNextCharIs('M') && reader.icNextCharIs('I') && reader.icNextCharIs('T') &&
                                                 reader.nextIsBlank()) {
                                             context.setSQLType(SQLContext.LOCK_SQL);
-                                            //limitClause();
+                                            limitClause();
                                         } else {
                                             findNextToken(false);
                                         }
@@ -785,84 +785,15 @@ public class SQLParser {
     }
 
 
-    /**
-     * pos++;
-     * ch = sql[++pos];
-     * 等价于
-     * pos+=2;
-     * ch = sql[pos];
-     */
-    /*void Number() {
-        int pos = reader.getPos();
-        byte ch = reader.cur();
-        boolean has = true;
-        if (ch == '-' || ch == '+') {
-            ch = reader.nextChar();
-        }
-        while ('0' <= ch && ch <= '9' && has) {
-            if (reader.hasNext()) {
-                ch = reader.cur();
-                reader.move();
-            } else {
-                has = false;
-            }
-        }
-        boolean isDouble = false;
-        if ((ch == '.') && has) {
-            if (sql[pos + 1] == '.') {
-                this.pos = pos - 1;
-                return;
-            }
-            pos += 2;
-            ch = sql[pos];
-            isDouble = true;
-            while ('0' <= ch && ch <= '9' && has) {
-                if (reader.hasNext()) {
-                    ch = sql[pos];
-                    ++pos;
-                } else {
-                    has = false;
-                }
-            }
-        }
-        if ((ch == 'e' || ch == 'E') && has) {
-            pos += 2;
-            ch = sql[pos];
-            if (ch == '+' || ch == '-') {
-                pos += 2;
-                ch = sql[pos];
-            }
-            while (('0' <= ch && ch <= '9') && has) {
-                if (reader.hasNext()) {
-                    ch = sql[pos];
-                    ++pos;
-                } else {
-                    has = false;
-                }
-            }
-            isDouble = true;
-        }
-        this.pos = has ? pos - 1 : pos;
-        if (isDouble) {
-            //LITERAL_FLOAT;
-        } else {
-            //LITERAL_INT;
-        }
-
-    }
-
-
     void limitClause() {
         int argCount = 0;
         while (reader.hasNext()) {
             switch (reader.nextChar()) {
                 case '+':
                 case '-':
-                    byte digit = sql[pos + 1];
+                    byte digit = reader.nextChar();
                     if ('0' <= digit && digit <= '9') {
-                        int pos = this.pos;
-                        Number();
-                        limitNumberCollector(pos, this.pos);
+                        reader.readNumber();
                         ++argCount;
                     } else if (digit == '-') {
                         DoubleDashComment();
@@ -878,14 +809,12 @@ public class SQLParser {
                 case '7':
                 case '8':
                 case '9': {
-                    int pos = this.pos;
-                    Number();
-                    limitNumberCollector(pos, this.pos);
+                    reader.readNumber();
                     ++argCount;
                     break;
                 }
                 case '?'://PARAM_MARKER
-                    limitParamMarkerCollector(this.pos, this.pos + 1);
+                    reader.limitParamMarkerCollector();
                     ++argCount;
                     break;
                 case '#'://"#" 和"–- "属于单行注释，注释范围为该行的结尾
@@ -909,11 +838,9 @@ public class SQLParser {
                     break;
                 case 'O':
                 case 'o': {
-                    int pos = this.pos;
                     if (reader.icNextCharIs('F') && reader.icNextCharIs('F') && reader.icNextCharIs('S') && reader.icNextCharIs('E') && reader.icNextCharIs('T') &&
                             reader.nextIsBlank()) {
                         if (argCount == 1) {
-                            this.pos = pos;
                             //goto    case ','
                         } else {
                             //offset 的普通字符串 ,非关键字,异常路径
@@ -934,7 +861,8 @@ public class SQLParser {
                 return;
             }
         }
-    }*/
+    }
+
 
     void QuoteString() {
         byte end = reader.cur();
@@ -942,19 +870,12 @@ public class SQLParser {
             if (reader.nextChar() == end) {
                 reader.move();
                 return;
-            } else if (reader.cur() =='\\') {
+            } else if (reader.cur() == '\\') {
                 reader.move();
             }
         }
     }
 
-//    final void limitParamMarkerCollector(int start, int end) {
-//        System.out.println(new String(sql, start, end - start));
-//    }
-//
-//    final void limitNumberCollector(int start, int end) {
-//        System.out.println(new String(sql, start, end - start));
-//    }
 
     void ReturnBasicParse() {
         status_queue[queue_pos] = BASIC_PARSER;

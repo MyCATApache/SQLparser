@@ -216,11 +216,11 @@ public class NewSQLParser {
      */
     public void firstParse(byte[] sql, SQLContext context) {
         tokenize(sql);
-        for(int i=0; i<hashArray.getCount(); i++) {
+        /*for(int i=0; i<hashArray.getCount(); i++) {
             switch (hashArray.get(i)) {
                 case FROM:
             }
-        }
+        }*/
 
     }
 

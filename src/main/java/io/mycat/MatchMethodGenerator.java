@@ -1,10 +1,13 @@
 package io.mycat;
 
 import com.alibaba.druid.sql.parser.Token;
+import javafx.util.Pair;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -122,49 +125,59 @@ public class MatchMethodGenerator {
         map.put("INOUT", Token.INOUT);
     }
 
-    public static void main(String[] args) {
-        //isXXXTokenGenerator();
-        //skipXXXTokenGenerator();
-        IntStream.range(24, 31).forEach(x -> {
-            Map<Long, List<Token>> map = Stream.of(Token.values())
-                    .filter((t) -> t.name() != null)
-                    .collect(Collectors.groupingBy((t) -> {
-                                String name = t.name();
-                                char size = (char)name.length();
-                                int b = 378551;
-                                int a = 63689;
-                                int seed = 13131;
-                                long hash = 0;
-                                int low = 0;
-                                int high = 0;
-                                for(int i=0; i<size; i++) {
-                                    char c = name.charAt(i);
-                                    //BKDRHash
-                                    low = low * seed + c;
-                                    //RS Hash
-                                    high = high * a + c;
-                                    a *= b;
-                                };
-                                hash = (long)(high & 0x7FFFFFFF) << 32 | (long)(low & 0x7FFFFFFF);
-                                return (hash & (0xff << x));
-//                            return t.name().chars().sum();
-                            }
-                    ));
-            /*long count = map.entrySet().stream()
-                    .filter((k) -> k.getValue().size() > 2)
-                    .count();
-                    if (count == 0) {
-                System.out.println("result = "+x);
+    static final byte[] shrinkCharTbl = new byte[96];//为了压缩hash字符映射空间，再次进行转义
+    static void initShrinkCharTbl () {
+        shrinkCharTbl[0] = 1;//从 $ 开始计算
+        IntStream.rangeClosed('0', '9').forEach(c -> shrinkCharTbl[c-'$'] = (byte)(c-'0'+2));
+        IntStream.rangeClosed('A', 'Z').forEach(c -> shrinkCharTbl[c-'$'] = (byte)(c-'A'+12));
+        shrinkCharTbl['_'-'$'] = (byte)38;
+    }
+
+    static void sqlKeyHastTest() {
+        initShrinkCharTbl();
+
+        IntStream.range(0, 54).forEach(x -> {
+//            Map<Long, List<Token>> map = Stream.of(Token.values())
+            Map<Long, List<String>> map = null;
+            try {
+                map = Files.lines(Paths.get("sql_tokens.txt"))
+                        .collect(Collectors.groupingBy((t) -> {
+                                    String name = t;
+                                    char size = (char)name.length();
+                                    long seed = 41;
+                                    long hash = 0;
+                                    for(int i=0; i<size; i++) {
+                                        byte c = shrinkCharTbl[name.charAt(i)-'$'];
+                                        //BKDRHash
+                                        hash = hash * seed + c;
+                                    };
+                                    return (long)((hash & (0x1ffL << (long)x)) >> (long)x);
+    //                            return t.name().chars().sum();
+                                }
+                        ));
+            } catch (IOException e) {
+                e.printStackTrace();
             }
-                    */
-            System.out.println("result = "+x+" >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>");
-            map.entrySet().stream()
-                    //.filter((k) -> k.getValue().size() > 1)
-                    .forEach((e) -> System.out.format("%d : %s %n", e.getKey(), e.getValue().toString()));
+            Map.Entry<Long, List<String>> maxItem = map.entrySet().stream()
+                    //.filter((k) -> k.getValue().size() < 3)
+//                    .count();
+                    .max((a, b) -> a.getValue().size()>b.getValue().size()?1:(a.getValue().size()==b.getValue().size()?0:-1))
+                    .get();
+            long count = map.entrySet().stream().count();
 
+            long max = maxItem.getValue().size();
+//                    if (count == 0) {
+                System.out.println("result = "+x+" ; max repeat = "+max+" ; count = "+count);
+//            }
 
-        });
-        //当左移位数为
+//            System.out.println("result = "+x+" >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>");
+//            map.entrySet().stream()
+//                    .filter((k) -> k.getValue().size() > 1)
+//                    .forEach((e) -> System.out.format("%d : %s %n", e.getKey(), e.getValue().toString()));
+
+        });}
+
+        //当左移位数为以下数值时，SQL关键字8位索引不会发生碰撞
 //        result = 24
 //        result = 25
 //        result = 26
@@ -173,7 +186,109 @@ public class MatchMethodGenerator {
 //        result = 29
 //        result = 30
 //        result = 31
-                //.forEach((e) -> System.out.format("%d : %s %n", e.getKey(), e.getValue().toString()));
+//    }
+
+    static long genHash(char[] str) {
+        int seed = 41;
+        long hash = 0;
+        for (char c: str) {
+            //BKDRHash
+            hash = hash * seed + shrinkCharTbl[c-'$'];
+        }
+        return hash;
+    }
+
+    static boolean cmp(char[] str1, char[] str2) {
+        if (str1.length == str2.length) {
+            for (int i=0; i< str1.length; i++) {
+                if (str1[i] != str2[i]) {
+                    return false;
+                }
+            }
+            return true;
+        }
+        return false;
+    }
+
+    static int collideCount = 0;
+    static long hashCollideTest(final List<Pair<Long, char[]>> sqlKeys, final ArrayList<Character> srcArray,
+                                final int maxDepth, final int depth, final char[] str,
+                                final long totalCount, final long count) {
+        long newCount = count;
+        for (Character c: srcArray) {
+            str[depth] = c;
+            if (depth < maxDepth -1)
+                newCount = hashCollideTest(sqlKeys, srcArray, maxDepth, depth+1, str, totalCount, newCount);
+            else {
+                final long hash = genHash(str);
+                sqlKeys.forEach(x -> {
+                    if (x.getKey() == hash && !cmp(x.getValue(), str)) {
+                        collideCount++;
+                        System.out.println("Key '"+String.valueOf(x.getValue())+"' collides with '"+String.valueOf(str)+"' with hash : "+hash);
+                    }
+                });
+                newCount++;
+                if (newCount%10000000 == 1) {
+                    Date now=new Date();
+                    System.out.println(now.toLocaleString()+" progress : "+newCount+"/"+totalCount);
+                }
+            }
+        }
+        return newCount;
+    }
+
+    static void run() {
+        ArrayList<Character> srcArray = new ArrayList<>();
+        IntStream.range('A', 'Z').forEach(c -> srcArray.add((char)c));
+        IntStream.range('0', '9').forEach(c -> srcArray.add((char)c));
+        srcArray.add('_');
+        srcArray.add('-');
+
+        List<Pair<Long, char[]>> sqlKeys = Stream.of(Token.values())
+                .filter(t -> t.name()!=null)
+                .map(x -> new Pair<>(genHash(x.name().toCharArray()), x.name().toCharArray()))
+                .collect(Collectors.toList());
+
+        collideCount = 0;
+        int maxDepth = 7;
+        long totalCount = srcArray.size();
+        for(int i=0; i<maxDepth-1; i++) totalCount *= srcArray.size();
+        char[] str = new char[maxDepth];
+        long count = hashCollideTest(sqlKeys, srcArray, maxDepth, 0, str, totalCount, 0);
+        Date now = new Date();
+        if (count != totalCount) {
+            System.out.println(now.toLocaleString()+" finished : "+count+"/"+totalCount+" collideCount="+collideCount);
+        } else {
+            System.out.println(now.toLocaleString()+" success!"+" collideCount="+collideCount);
+
+        }
+    }
+
+    static int BKRDHash(String str) {
+        int hash = 0;
+        int seed = 131;
+        for(char c: str.toCharArray()) {
+            hash = hash*seed + c;
+        }
+        return hash;
+    }
+
+    static int RSHash(String str) {
+        int b = 378551;
+        int a = 63689;
+        int hash = 0;
+        for(char c: str.toCharArray()) {
+            hash = hash*a + c;
+            a *= b;
+        }
+        return hash;
+    }
+
+    static void test1() {
+        String a = "abcdefghijklmnopqrstuvwxyz";
+        String b = "abcdefghijklmnopqrstuvwxyz";
+        System.out.println(a+" : "+RSHash(a));
+        System.out.println(b+" : "+RSHash(b));
     }
 
     /**
@@ -209,5 +324,25 @@ public class MatchMethodGenerator {
             keyword = String.valueOf(keyword.charAt(0)).toUpperCase() + keyword.substring(1, keyword.length());
             System.out.format("final void skip%sToken() {\npos+=%d;\n}%n", keyword, keyword.length());
         });
+    }
+    static void GenerateSqlTokenHash() {
+        initShrinkCharTbl();
+        try {
+            Files.lines(Paths.get("sql_tokens.txt")).forEach(x -> {
+                System.out.format("    public static final long %s = 0x%xL;%n", x, genHash(x.toCharArray()));
+            });
+//            System.out.println("conflict count : "+count);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static void main(String[] args) {
+        //isXXXTokenGenerator();
+        //skipXXXTokenGenerator();
+//        sqlKeyHastTest();
+//        run();
+//        test1();
+        GenerateSqlTokenHash();
     }
 }

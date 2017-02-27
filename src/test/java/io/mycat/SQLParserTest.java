@@ -528,4 +528,84 @@ public class SQLParserTest extends TestCase {
             "   And f.Fabric_NO = d.Fabric_No\n" +
             " Order By d.Fabric_No, p.WorkClas\n";
 
+    static String sql3 = "SELECT  'product' as 'P_TYPE' ,\n" +
+            "\t \t\tp.XINSHOUBIAO,\n" +
+            "\t\t\t0 AS TRANSFER_ID,\n" +
+            "\t\t\tp.PRODUCT_ID ,\n" +
+            "\t\t\tp.PRODUCT_NAME,\n" +
+            "\t\t\tp.PRODUCT_CODE,\n" +
+            "\t\t\tROUND(p.APPLY_INTEREST,4) AS APPLY_INTEREST,\n" +
+            "\t\t\tp.BORROW_AMOUNT,\n" +
+            "\t\t\tCASE  WHEN p.FangKuanDate IS NULL THEN\n" +
+            "\t\t\t\tDATEDIFF(\n" +
+            "\t\t\t\t\tp.APPLY_ENDDATE,\n" +
+            "\t\t\t\t\tDATE_ADD(\n" +
+            "\t\t\t\t\t\tp.RAISE_END_TIME,\n" +
+            "\t\t\t\t\t\tINTERVAL 1 DAY\n" +
+            "\t\t\t\t\t)\n" +
+            "\t\t\t\t) +1\n" +
+            "\t\t\tELSE\n" +
+            "\t\t\t\tDATEDIFF(\n" +
+            "\t\t\t\t\tp.APPLY_ENDDATE,\n" +
+            "\t\t\t\t\tDATE_ADD(p.FangKuanDate, INTERVAL 1 DAY)\n" +
+            "\t\t\t\t) +1\n" +
+            "\t\t\tEND\t AS APPLY_ENDDAY,\n" +
+            "\t\t\t'' AS APPLY_ENDDATE,\n" +
+            "\t\t\tp.BORROW_ENDDAY,\n" +
+            "\t\t\t0 AS TRANSFER_HONGLI,\n" +
+            "\t\t\tp.BORROW_MONTH_TYPE,\n" +
+            "\t\t\tIFNULL(p.INVEST_SCHEDUL,0) AS INVEST_SCHEDUL,\n" +
+            "\t\t\tDATE_FORMAT(\n" +
+            "\t\t\t\tp.Product_pub_date,\n" +
+            "\t\t\t\t'%Y-%m-%d %H:%i:%s'\n" +
+            "\t\t\t) AS Product_pub_date,\n" +
+            " \t\t\td.DIZHIYA_TYPE_NAME,\n" +
+            "\t\t\tp.PRODUCT_TYPE_ID,\n" +
+            "\t\t\tp.PRODUCT_STATE,\n" +
+            "\t\t\tp.PRODUCT_LIMIT_TYPE_ID,\n" +
+            "\t\t\tp.PAYBACK_TYPE,\n" +
+            "\t\t\tp.TARGET_TYPE_ID,\n" +
+            "\t\t\tp.COUPONS_TYPE,\n" +
+            "      0 AS TRANSFER_TIME,\n" +
+            "      P.MANBIAODATE AS  MANBIAODATE\n" +
+            "\t\tFROM\n" +
+            "\t\t\tTProduct p\n" +
+            "\t\tJOIN TJieKuanApply j ON p.APPLY_NO = j.APPLY_NO\n" +
+            "\t\tJOIN TDiZhiYaType d ON d.DIZHIYA_TYPE = j.DIZHIYA_TYPE\n" +
+            "\t\tJOIN (\n" +
+            "\t\t\tSELECT\n" +
+            "\t\t\n" +
+            "\t\t\t\tPRODUCT_ID,\n" +
+            "\t\t\t\tCASE\n" +
+            "\t\t\tWHEN APPLY_ENDDATE IS NOT NULL THEN\n" +
+            "\t\t\t\tCASE  WHEN FangKuanDate IS NULL THEN\n" +
+            "\t\t\t\t\tDATEDIFF(\n" +
+            "\t\t\t\t\t\tAPPLY_ENDDATE,\n" +
+            "\t\t\t\t\t\tDATE_ADD(\n" +
+            "\t\t\t\t\t\t\tRAISE_END_TIME,\n" +
+            "\t\t\t\t\t\t\tINTERVAL 1 DAY\n" +
+            "\t\t\t\t\t\t)\n" +
+            "\t\t\t\t\t) +1\n" +
+            "\t\t\t\tELSE\n" +
+            "\t\t\t\t\tDATEDIFF(\n" +
+            "\t\t\t\t\t\tAPPLY_ENDDATE,\n" +
+            "\t\t\t\t\t\tDATE_ADD(FangKuanDate, INTERVAL 1 DAY)\n" +
+            "\t\t\t\t\t) +1\n" +
+            "\t\t\t\tEND\n" +
+            "\t\t\tWHEN BORROW_MONTH_TYPE = 1 THEN\n" +
+            "\t\t\t\tBORROW_ENDDAY\n" +
+            "\t\t\tWHEN BORROW_MONTH_TYPE = 2 THEN\n" +
+            "\t\t\t\tBORROW_ENDDAY * 30\n" +
+            "\t\t\tELSE\n" +
+            "\t\t\t\tBORROW_ENDDAY\n" +
+            "\t\t\tEND AS DAYS\n" +
+            "\t\t\tFROM\n" +
+            "\t\t\t\tTProduct\n" +
+            "\t\t\t) m ON p.PRODUCT_ID = m.PRODUCT_ID\n" +
+            "\t\tWHERE\n" +
+            "\t\t     1 = 1\n" +
+            "\t\t     AND p.PRODUCT_STATE IN(4,5,8) \n" +
+            "\t\t     AND (p.PRODUCT_ID) NOT IN (\n" +
+            "\t\t\t SELECT PRODUCT_ID FROM TProduct WHERE PRODUCT_STATE = 4 ";
+
 }

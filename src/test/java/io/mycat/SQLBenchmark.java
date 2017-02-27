@@ -24,6 +24,7 @@ import java.util.concurrent.TimeUnit;
 public class SQLBenchmark {
     SQLParser parser;
     SQLContext context;
+    NewSQLParser newSQLParser;
     byte[] srcBytes;
     String src;
 
@@ -43,8 +44,13 @@ public class SQLBenchmark {
         srcBytes = src.getBytes(StandardCharsets.UTF_8);//20794
         parser = new SQLParser();
         context = new SQLContext();
+        newSQLParser = new NewSQLParser();
+        newSQLParser.init();
         System.out.println("=> init");
     }
+
+    @Benchmark
+    public void NewSqQLParserTest() { newSQLParser.tokenize(srcBytes);}
 
     @Benchmark
     public void SQLParserTest() {

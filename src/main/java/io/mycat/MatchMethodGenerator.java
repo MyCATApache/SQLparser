@@ -198,6 +198,15 @@ public class MatchMethodGenerator {
         return hash;
     }
 
+    //JSHash
+    static int genHash2(char[] str) {
+        int hash = 1315423911;
+        for(char c: str) {
+            hash ^= ((hash<<5)+shrinkCharTbl[c-'$']+(hash>>2));
+        }
+        return hash;
+    }
+
     static boolean cmp(char[] str1, char[] str2) {
         if (str1.length == str2.length) {
             for (int i=0; i< str1.length; i++) {
@@ -328,8 +337,8 @@ public class MatchMethodGenerator {
     static void GenerateSqlTokenHash() {
         initShrinkCharTbl();
         try {
-            Files.lines(Paths.get("sql_tokens.txt")).forEach(x -> {
-                System.out.format("    public static final long %s = 0x%xL;%n", x, genHash(x.toCharArray()));
+            Files.lines(Paths.get("minimal_sql_tokens.txt")).forEach(x -> {
+                System.out.format("    public static final int %s = 0x%x%04x;%n", x, genHash2(x.toCharArray()) & 0xFFFF, x.length());
             });
 //            System.out.println("conflict count : "+count);
         } catch (IOException e) {

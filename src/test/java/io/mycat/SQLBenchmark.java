@@ -25,6 +25,7 @@ public class SQLBenchmark {
     SQLParser parser;
     SQLContext context;
     NewSQLParser newSQLParser;
+    NewUnsafeSQLParser unsafeSQLParser;
     byte[] srcBytes;
     String src;
 
@@ -46,21 +47,26 @@ public class SQLBenchmark {
         context = new SQLContext();
         newSQLParser = new NewSQLParser();
         newSQLParser.init();
+//        unsafeSQLParser = new NewUnsafeSQLParser();
+//        unsafeSQLParser.init();
         System.out.println("=> init");
     }
 
     @Benchmark
     public void NewSqQLParserTest() { newSQLParser.tokenize(srcBytes);}
 
+//    @Benchmark
+//    public void UnsafeSqQLParserTest() { unsafeSQLParser.tokenize(srcBytes);}
+
     @Benchmark
     public void SQLParserTest() {
         parser.parse(srcBytes, context);
     }
 
-    @Benchmark
-    public void DruidTest() {
-        List<SQLStatement> stmtList = SQLUtils.parseStatements(src, "mysql");
-    }
+//    @Benchmark
+//    public void DruidTest() {
+//        List<SQLStatement> stmtList = SQLUtils.parseStatements(src, "mysql");
+//    }
 
     public void DruidParse() {
         List<SQLStatement> stmtList = SQLUtils.parseStatements(src, "mysql");

@@ -39,14 +39,23 @@ public class NewSQLParser {
             while(pos>=0) {
                 hashArray[pos--] = 0;
             }
-            pos = 16;
-        };
-        void set(long hash) { hashArray[pos++] = hash; }
-        long get(int idx) { return hashArray[idx]; }
-        int getCount() {return pos-16;}
+            pos = 0;
+        }
+        void set(int type, int start, int size) { hashArray[pos++] = (long)type << 32 | size << 16 | start; pos++; }
+        void set(int type, int start, int size, long hash) { hashArray[pos++] = (long)type << 32 | size << 16 | start; hashArray[pos++] = hash; }
+        int getPos(int idx) { return ((int)hashArray[idx<<1])>>>16; }
+        int getSize(int idx) { return ((int)hashArray[idx<<1]&0xFFFF0000); }
+        int getType(int idx) { return (int)(hashArray[idx<<1]&0xFFFFFFFF00000000L>>>32); }
+        void setType(int idx, int type) { hashArray[idx<<1] = (hashArray[idx<<1] & 0xFFFFFFFFL) | ((long)type << 32); }
+        long getHash(int idx) { return hashArray[(idx<<1)+1]; }
+        int getIntHash(int idx) {
+            long value = hashArray[idx << 1];
+            return (int)(value >>> 16);
+        }
+        int getCount() {return pos>>1;}
     }
 
-    class TokenArray {
+/*    class TokenArray {
         short[] tokenPosArray = new short[1024];
         byte[] tokenSizeArray = new byte[1024];
         int pos = 0;
@@ -61,67 +70,71 @@ public class NewSQLParser {
 
         void setPos(short tokenPos) { tokenPosArray[pos] = tokenPos;}
         void setSize(byte size) { tokenSizeArray[pos++] = size;}
-    }
+    }*/
 
-//    final byte readArrayByte(Object array, long pos) { return unsafe.getByte(array, pos+16); }//unsafe访问数组需要往后偏移16位？？
+//    final byte readArrayByte(Object array, long pos) { return UNSAFE.getByte(array, pos+16); }//unsafe访问数组需要往后偏移16位？？
 
-    final byte DIGITS = 1;
-    final byte CHARS = 2;
-    final byte DOT = 3;
-    final byte COMMA = 4;
-    final byte STRINGS = 5;
-    final byte BACK_SLASH = 6;
-    final byte LEFT_PARENTHESES = 7;
-    final byte RIGHT_PARENTHESES = 8;
-    final byte SEMICOLON = 9;
-    final byte MINUS = 10;
-    final byte DIVISION = 11;
-    final byte STAR = 12;
-    final byte EQUAL = 13;
-    final byte PLUS = 14;
-    final byte LESS = 15;
-    final byte GREATER = 16;
-    final byte AT = 17;
+    private final int DIGITS = 1;
+    private final int CHARS = 2;
+    private final int STRINGS = 3;
+    private final int MINUS = 4;
+    private final int SHARP = 5;
+    private final int DIVISION = 6;
+    private final byte DOT = 7;
+    private final byte COMMA = 8;
+    private final byte BACK_SLASH = 9;
+    private final byte LEFT_PARENTHESES = 10;
+    private final byte RIGHT_PARENTHESES = 11;
+    private final byte SEMICOLON = 12;
+    private final byte STAR = 13;
+    private final byte EQUAL = 14;
+    private final byte PLUS = 15;
+    private final byte LESS = 16;
+    private final byte GREATER = 17;
+    private final byte AT = 18;
+    private final byte COMMENTS = 19;
 
 //    static final byte
 
-    final byte[] charType = new byte[255];
-    final byte[] shrinkCharTbl = new byte[96];//为了压缩hash字符映射空间，再次进行转义
+    final byte[] charType = new byte[512];
+    //final byte[] shrinkCharTbl = new byte[96];//为了压缩hash字符映射空间，再次进行转义
     HashArray hashArray = new HashArray();
-    TokenArray tokenArray = new TokenArray();
-//    Unsafe unsafe;
+    //TokenArray tokenArray = new TokenArray();
+//    Unsafe UNSAFE;
 
     void init() {
         //// TODO: 2017/2/21 可能需要调整顺序进行优化
-        IntStream.range('0', '9').forEach(c -> charType[c] = DIGITS);
-        IntStream.range('A', 'Z').forEach(c -> charType[c] = CHARS);
-        IntStream.range('a', 'z').forEach(c -> charType[c] = CHARS);
-        charType['_'] = CHARS;
-        charType['$'] = CHARS;
-        charType['.'] = DOT;
-        charType[','] = COMMA;
+        IntStream.rangeClosed('0', '9').forEach(c -> charType[c<<1] = DIGITS);
+        IntStream.rangeClosed('A', 'Z').forEach(c -> charType[c<<1] = CHARS);
+        IntStream.rangeClosed('a', 'z').forEach(c -> charType[c<<1] = CHARS);
+        charType['_'<<1] = CHARS;
+        charType['$'<<1] = CHARS;
+        charType['.'<<1] = DOT;
+        charType[','<<1] = COMMA;
         //字符串
-        charType['"'] = STRINGS;
-        charType['\''] = STRINGS;
-        charType['\\'] = BACK_SLASH;
+        charType['"'<<1] = STRINGS;
+        charType['\''<<1] = STRINGS;
+        charType['\\'<<1] = BACK_SLASH;
         //sql分隔
-        charType['('] = LEFT_PARENTHESES;
-        charType[')'] = RIGHT_PARENTHESES;
-        charType[';'] = SEMICOLON;
+        charType['('<<1] = LEFT_PARENTHESES;
+        charType[')'<<1] = RIGHT_PARENTHESES;
+        charType[';'<<1] = SEMICOLON;
         //（可能的）注释和运算符
-        charType['-'] = MINUS;
-        charType['/'] = DIVISION;
-        charType['*'] = STAR;
-        charType['='] = EQUAL;
-        charType['+'] = PLUS;
-        charType['<'] = LESS;
-        charType['>'] = GREATER;
-        charType['@'] = AT;
+        charType['-'<<1] = MINUS;
+        charType['/'<<1] = DIVISION;
+        charType['#'<<1] = SHARP;
+        charType['*'<<1] = STAR;
+        charType['='<<1] = EQUAL;
+        charType['+'<<1] = PLUS;
+        charType['<'<<1] = LESS;
+        charType['>'<<1] = GREATER;
+        charType['@'<<1] = AT;
 
-        shrinkCharTbl[0] = 1;//从 $ 开始计算
-        IntStream.rangeClosed('0', '9').forEach(c -> shrinkCharTbl[c-'$'] = (byte)(c-'0'+2));
-        IntStream.rangeClosed('A', 'Z').forEach(c -> shrinkCharTbl[c-'$'] = (byte)(c-'A'+12));
-        shrinkCharTbl['_'-'$'] = (byte)38;
+        charType[('$'<<1)+1] = 1;
+        IntStream.rangeClosed('0', '9').forEach(c -> charType[(c<<1)+1] = (byte)(c-'0'+2));
+        IntStream.rangeClosed('A', 'Z').forEach(c -> charType[(c<<1)+1] = (byte)(c-'A'+12));
+        IntStream.rangeClosed('a', 'z').forEach(c -> charType[(c<<1)+1] = (byte)(c-'a'+12));
+        charType[('_'<<1)+1] = 38;
 
         // 通过反射得到theUnsafe对应的Field对象
 //        Field field = null;
@@ -130,7 +143,7 @@ public class NewSQLParser {
 //            // 设置该Field为可访问
 //            field.setAccessible(true);
 //            // 通过Field得到该Field对应的具体对象，传入null是因为该Field为static的
-//            unsafe = (Unsafe) field.get(null);
+//            UNSAFE = (Unsafe) field.get(null);
 //        } catch (NoSuchFieldException e) {
 //            e.printStackTrace();
 //        } catch (IllegalAccessException e) {
@@ -138,25 +151,27 @@ public class NewSQLParser {
 //        }
     }
 
-    short parseToken(byte[] sql, short pos, int sqlLength) {
-        byte size = 1;
-        byte c = (byte)(sql[pos] & 0xDF);
-        tokenArray.setPos(pos);
-        long hash = shrinkCharTbl[c - '$'];
-        while (++pos < sqlLength && (charType[c = sql[pos]] == 2) ) {
-            hash = (hash*41)+shrinkCharTbl[((c & 0xDF) - '$')];//别问我为什么是41
+    int parseToken(byte[] sql, int pos, int sqlLength, byte c) {
+        int cType;
+        int start = pos;
+        int size = 1;
+        long hash = c = charType[(c<<1)+1];
+        int type = 1315423911;
+        type ^= (type<<5) + c + (type>>2);
+        while (++pos < sqlLength && (((cType = charType[(c = sql[pos])<<1]) == 2) || cType == 1) ) {
+            cType = charType[(c<<1)+1];
+            hash = (hash*41)+cType;//别问我为什么是41
+            type ^= (type<<5) + cType + (type>>2);
             size++;
         }
-        hashArray.set(hash);
-        tokenArray.setSize(size);
+        hashArray.set(type, start, size, hash);
         return pos;
     }
 
-    short parseString(byte[] sql, short pos, int sqlLength, byte startSign) {
-        byte size = 1;
-        hashArray.set(STRINGS);
-        tokenArray.setPos((short)(pos-1));
-        byte c;
+    int parseString(byte[] sql, int pos, int sqlLength, int startSign) {
+        int size = 1;
+        int start = pos;
+        int c;
         while (++pos < sqlLength ) {
             c = sql[pos];
             if (c == '\\') {
@@ -167,60 +182,178 @@ public class NewSQLParser {
                 size++;
             }
         }
-        tokenArray.setSize(size);
+        hashArray.set(STRINGS, start, size, 0L);
+        return pos;
+    }
+
+    int parseDigits(byte[] sql, int pos, int sqlLength) {
+        int start = pos;
+        int size = 1;
+        while (++pos<sqlLength && charType[sql[pos]<<1] == DIGITS) {
+            size++;
+        }
+        hashArray.set(DIGITS, start, size);
+        return pos;
+    }
+
+    int skipSingleLineComment(byte[] sql, int pos, int sqlLength) {
+        while (++pos < sqlLength && sql[pos]!='\n');
+        return pos;
+    }
+
+    int skipMultiLineComment(byte[] sql, int pos, int sqlLength, int pre) {
+        int start = pos-1;
+        int size=2;
+        while (++pos < sqlLength) {
+            if (pre == '*' && sql[pos] == '/' ) {
+                size++;
+            }
+        }
+        hashArray.set(COMMENTS, start, size);
         return pos;
     }
 
     void tokenize(byte[] sql) {
-        short pos = 0;
+        int pos = 0;
         int sqlLength = sql.length;
         hashArray.init();
-        tokenArray.init();
         byte c;
         byte cType;
         while (pos < sqlLength) {
             c = sql[pos];
-            cType = charType[c];
-            if (cType == CHARS) {
-                pos = parseToken(sql, pos, sqlLength);
-            } else if (cType == DIGITS) {
-                hashArray.set(DIGITS);
-                tokenArray.setPos(pos);
-                byte size = 1;
-                while (++pos<sqlLength && charType[sql[pos]] == DIGITS) {
-                    size++;
-                }
-                tokenArray.setSize(size);
-            } else if (cType == MINUS) {
-                if (charType[sql[++pos]]!=MINUS) {
-                    hashArray.set(MINUS);
-                    tokenArray.setPos(pos--);
-                    tokenArray.setSize((byte)1);
-                } else {
-                    while (++pos < sqlLength && sql[pos]!='\n'); //跳过单行注释
-                }
-            } else if (cType == STRINGS) {
-                pos = parseString(sql, ++pos, sqlLength, c);
-            } else if (cType != 0) {
-                hashArray.set(cType);
-                tokenArray.setPos(pos++);
-                tokenArray.setSize((byte)1);
-            } else {
-                pos++;
+            cType = charType[c<<1];
+
+//            if (cType == CHARS) {
+//                pos = parseToken(sql, pos, sqlLength, c);
+//            } else if (cType == DIGITS) {
+//                pos = parseDigits(sql, pos, sqlLength);
+//            } else if (cType == MINUS) {
+//                if (charType[sql[++pos]]!=MINUS) {
+//                    hashArray.set(MINUS, pos++, (short)1);
+//                } else {
+//                    pos = skipSingleLineComment(sql, pos, sqlLength);
+//                }
+//            } else if (cType == STRINGS) {
+//                pos = parseString(sql, ++pos, sqlLength, c);
+//            } else if (cType == SHARP) {
+//                pos = skipSingleLineComment(sql, pos, sqlLength);
+//            } else if (cType == DIVISION) {
+//                byte next = sql[++pos];
+//                if (next == '*') {
+//                    pos = skipMultiLineComment(sql, pos, sqlLength, next);
+//                } if (next == '/') {
+//                    pos = skipSingleLineComment(sql, pos, sqlLength);
+//                } else {
+//                    hashArray.set(charType[next<<1], pos++, (short)1);
+//                }
+//            } else if (cType != 0) {
+//                hashArray.set(cType, pos++, (short)1);
+//            } else {
+//                pos++;
+//            }
+
+            switch (cType) {
+                case 0:
+                    pos++;
+                    break;
+                case CHARS:
+                    pos = parseToken(sql, pos, sqlLength, c);
+                    break;
+                case DIGITS:
+                    pos = parseDigits(sql, pos, sqlLength);
+                    break;
+                case STRINGS:
+                    pos = parseString(sql, ++pos, sqlLength, c);
+                    break;
+                case MINUS:
+                    if (sql[++pos]!='-') {
+                        hashArray.set(MINUS, pos++, 1);
+                    } else {
+                        pos = skipSingleLineComment(sql, pos, sqlLength);
+                    }
+                    break;
+                case SHARP:
+                    pos = skipSingleLineComment(sql, pos, sqlLength);
+                    break;
+                case DIVISION:
+                    int next = sql[++pos];
+                    if (next == '*') {
+                        pos = skipMultiLineComment(sql, pos, sqlLength, next);
+                    } if (next == '/') {
+                        pos = skipSingleLineComment(sql, pos, sqlLength);
+                    } else {
+                        hashArray.set(charType[next<<1], pos++, 1);
+                    }
+                    break;
+                default:
+                    hashArray.set(cType, pos++, 1);
             }
         }
     }
 
+    void pickTableNames(int idx) {
+
+    }
     /*
     * 用于进行第一遍处理，处理sql类型以及提取表名
      */
-    public void firstParse(byte[] sql, SQLContext context) {
-        tokenize(sql);
-        /*for(int i=0; i<hashArray.getCount(); i++) {
-            switch (hashArray.get(i)) {
-                case FROM:
+    public void firstParse(SQLContext context) {
+        for(int i=0; i<hashArray.getCount(); i++) {
+            switch (hashArray.getIntHash(i)) {
+                case IntTokenHash.FROM:
+                    if (hashArray.getHash(i) == TokenHash.FROM) {
+
+                    }
+                    break;
+                case IntTokenHash.JOIN:
+                    if (hashArray.getHash(i) == TokenHash.JOIN) {
+
+                    }
+                    break;
+                case IntTokenHash.UPDATE:
+                    if (hashArray.getHash(i) == TokenHash.UPDATE) {
+
+                    }
+                    break;
+                case IntTokenHash.USE:
+                    if (hashArray.getHash(i) == TokenHash.USE) {
+
+                    }
+                    break;
+                case IntTokenHash.DELETE:
+                    if (hashArray.getHash(i) == TokenHash.DELETE) {
+
+                    }
+                    break;
+                case IntTokenHash.DROP:
+                    if (hashArray.getHash(i) == TokenHash.DROP) {
+
+                    }
+                    break;
+                case IntTokenHash.SELECT:
+                    if (hashArray.getHash(i) == TokenHash.SELECT) {
+
+                    }
+                    break;
+                case IntTokenHash.SHOW:
+                    if (hashArray.getHash(i) == TokenHash.SHOW) {
+
+                    }
+                    break;
+                case IntTokenHash.INSERT:
+                    if (hashArray.getHash(i) == TokenHash.INSERT) {
+
+                    }
+                    break;
+                case IntTokenHash.INTO:
+                    if (hashArray.getHash(i) == TokenHash.INTO) {
+
+                    }
+                    break;
+                default:
+                    break;
             }
-        }*/
+        }
 
     }
 

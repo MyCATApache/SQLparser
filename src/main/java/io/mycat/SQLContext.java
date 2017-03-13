@@ -26,7 +26,7 @@ public class SQLContext {
     private byte schemaCount;
     private short schemaResultPos;
     private byte[] buffer;
-    private int sqlHash;
+    private long sqlHash;
     private byte sqlType;
     private int tblResultArraySize = 128;//todo : 测试期先写死，后期考虑从设置参数中读取 by kaiz
     private int schemaResultArraySize = 64;//todo : 测试期先写死，后期考虑从设置参数中读取 by kaiz
@@ -39,10 +39,11 @@ public class SQLContext {
     public static final byte ALTER_SQL = 2;
     public static final byte DROP_SQL = 3;
     public static final byte TRUNCATE_SQL = 4;
-    public static final byte COMMENT_SQL = 5;
+//    public static final byte COMMENT_SQL = 5;
     public static final byte RENAME_SQL = 6;
     public static final byte USE_SQL = 7;
     public static final byte SHOW_SQL = 8;
+    public static final byte PARTITION_SQL = 9;
 
     //DML
     public static final byte SELECT_SQL = 10;
@@ -52,16 +53,25 @@ public class SQLContext {
     public static final byte REPLACE_SQL = 14;
     public static final byte CALL_SQL = 15;
     public static final byte EXPLAIN_SQL = 16;
-    public static final byte LOCK_SQL = 17;
+
+    public static final byte DESCRIBE_SQL = 16;
+    public static final byte HANDLER_SQL = 16;
+    public static final byte LOAD_SQL = 16;
 
     //DCL
     public static final byte GRANT_SQL = 20;
     public static final byte REVOKE_SQL = 21;
 
     //TCL
+    public static final byte TRANSACTION_SQL = 10;
     public static final byte SAVEPOINT_SQL = 10;
     public static final byte ROLLBACK_SQL = 11;
     public static final byte SET_TRANSACTION_SQL = 12;
+    public static final byte LOCK_SQL = 17;
+    public static final byte XA_SQL = 17;
+    public static final byte SET_AUTOCOMMIT_SQL = 17;
+    public static final byte COMMIT_SQL = 17;
+//    public static final byte COMMIT_SQL = 17;
 
     //ANNOTATION TYPE
     public static final byte ANNOTATION_BALANCE = 1;
@@ -70,6 +80,9 @@ public class SQLContext {
     public static final byte ANNOTATION_SCHEMA = 4;
     public static final byte ANNOTATION_DATANODE = 5;
     public static final byte ANNOTATION_CATLET = 6;
+    private boolean hasLimit = false;
+    private int limitStart = 0;
+    private int limitCount = 0;
 
 
     public SQLContext() {
@@ -88,6 +101,9 @@ public class SQLContext {
         sqlHash = 0;
         sqlType = 0;
         annotationType = 0;
+        hasLimit = false;
+        limitStart = 0;
+        limitCount = 0;
     }
 
     public void setTblNameStart(int pos) {
@@ -139,9 +155,9 @@ public class SQLContext {
         //return builder.append((char[])buffer, offset, size).toString();
     }
 
-    public void setSQLHash(int sqlHash) { this.sqlHash = sqlHash; }
+    public void setSQLHash(long sqlHash) { this.sqlHash = sqlHash; }
 
-    public int getSqlHash() { return this.sqlHash; }
+    public long getSqlHash() { return this.sqlHash; }
 
     public void setSQLType(byte sqlType) {
         if (this.sqlType == 0)
@@ -149,6 +165,22 @@ public class SQLContext {
     }
 
     public byte getSQLType() { return this.sqlType; }
+
+    public void setLimit() { hasLimit = true; }
+    public boolean hasLimit() { return this.hasLimit; }
+    public void setLimitCount(int count) { limitCount = count; }
+    public void pushLimitStart() {
+        limitStart = limitCount;
+    }
+    public void setLimitStart(int start) {
+        limitStart = start;
+    }
+    public int getLimitStart() {
+        return limitStart;
+    }
+    public int getLimitCount() {
+        return limitCount;
+    }
 
     public boolean hasAnnotation() { //by kaiz : 是否包含注解，此处还需要完善
         return false;

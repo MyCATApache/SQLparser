@@ -53,7 +53,7 @@ public class SQLBenchmark {
     }
 
     @Benchmark
-    public void NewSqQLParserTest() { newSQLParser.tokenize(srcBytes);}
+    public void NewSqQLParserTest() { newSQLParser.parse(srcBytes, context);}
 
 //    @Benchmark
 //    public void UnsafeSqQLParserTest() { unsafeSQLParser.tokenize(srcBytes);}

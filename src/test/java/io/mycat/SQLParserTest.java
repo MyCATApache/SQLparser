@@ -11,13 +11,15 @@ import java.util.stream.IntStream;
  * Created by Kaiz on 2017/1/22.
  */
 public class SQLParserTest extends TestCase {
-    SQLParser parser;
+//    SQLParser parser;
+    NewSQLParser parser;
     SQLContext context;
 
     @Before
     protected void setUp() throws Exception {
-        parser = new SQLParser();
+        parser = new NewSQLParser();
         context = new SQLContext();
+        parser.init();
     }
 
     @Test
@@ -26,6 +28,9 @@ public class SQLParserTest extends TestCase {
         byte[] bytes = t.getBytes();
         parser.parse(bytes, context);
         assertEquals(1, context.getTableCount());
+        assertEquals(true, context.hasLimit());
+        assertEquals(50, context.getLimitStart());
+        assertEquals(100, context.getLimitCount());
     }
 
     @Test
@@ -38,10 +43,13 @@ public class SQLParserTest extends TestCase {
                 "            FROM posts \n" +
                 "            ORDER BY timestamp desc limit 0, 15\n" +
                 "      ) \n" +
-                "      as t) LIMIT ?, ?;";
+                "      as t);";
         byte[] bytes = t.getBytes();
         parser.parse(bytes, context);
         assertEquals(2, context.getTableCount());
+        assertEquals(true, context.hasLimit());
+        assertEquals(0, context.getLimitStart());
+        assertEquals(15, context.getLimitCount());
     }
 
     @Test
@@ -50,6 +58,9 @@ public class SQLParserTest extends TestCase {
         byte[] bytes = t.getBytes();
         parser.parse(bytes, context);
         assertEquals(1, context.getTableCount());
+        assertEquals(true, context.hasLimit());
+        assertEquals(0, context.getLimitStart());
+        assertEquals(5, context.getLimitCount());
     }
 
     @Test
@@ -58,6 +69,9 @@ public class SQLParserTest extends TestCase {
         byte[] bytes = t.getBytes();
         parser.parse(bytes, context);
         assertEquals(1, context.getTableCount());
+        assertEquals(true, context.hasLimit());
+        assertEquals(95, context.getLimitStart());
+        assertEquals(-1, context.getLimitCount());
     }
 
     @Test
@@ -206,6 +220,13 @@ public class SQLParserTest extends TestCase {
         parser.parse(sql2.getBytes(StandardCharsets.UTF_8), context);
         IntStream.range(0, context.getTableCount()).forEach(i -> System.out.println(context.getSchemaName(i) + '.' + context.getTableName(i)));
         assertEquals(17, context.getTableCount());
+    }
+
+    @Test
+    public void testCase04() throws Exception {
+        parser.parse(sql3.getBytes(StandardCharsets.UTF_8), context);
+        IntStream.range(0, context.getTableCount()).forEach(i -> System.out.println(context.getSchemaName(i) + '.' + context.getTableName(i)));
+        assertEquals(5, context.getTableCount());
     }
 
     @Test

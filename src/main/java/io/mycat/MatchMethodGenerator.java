@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -133,25 +134,28 @@ public class MatchMethodGenerator {
         shrinkCharTbl['_'-'$'] = (byte)38;
     }
 
-    static void sqlKeyHastTest() {
+    static void sqlKeyHastTest(String fileName, Function<String, Long> fun, long maskBit) {
         initShrinkCharTbl();
 
         IntStream.range(0, 54).forEach(x -> {
 //            Map<Long, List<Token>> map = Stream.of(Token.values())
             Map<Long, List<String>> map = null;
             try {
-                map = Files.lines(Paths.get("sql_tokens.txt"))
+                map = Files.lines(Paths.get(fileName))
                         .collect(Collectors.groupingBy((t) -> {
-                                    String name = t;
+                                    long hash = fun.apply(t);
+                                    /*String name = t;
                                     char size = (char)name.length();
                                     long seed = 41;
-                                    long hash = 0;
+
                                     for(int i=0; i<size; i++) {
                                         byte c = shrinkCharTbl[name.charAt(i)-'$'];
                                         //BKDRHash
                                         hash = hash * seed + c;
                                     };
-                                    return (long)((hash & (0x1ffL << (long)x)) >> (long)x);
+                                    return (long)((hash & (0x1ffL << (long)x)) >> (long)x);*/
+
+                                    return (long)((hash & (maskBit << (long)x)) >> (long)x);
     //                            return t.name().chars().sum();
                                 }
                         ));
@@ -176,17 +180,6 @@ public class MatchMethodGenerator {
 //                    .forEach((e) -> System.out.format("%d : %s %n", e.getKey(), e.getValue().toString()));
 
         });}
-
-        //当左移位数为以下数值时，SQL关键字8位索引不会发生碰撞
-//        result = 24
-//        result = 25
-//        result = 26
-//        result = 27
-//        result = 28
-//        result = 29
-//        result = 30
-//        result = 31
-//    }
 
     static long genHash(char[] str) {
         int seed = 41;
@@ -334,11 +327,14 @@ public class MatchMethodGenerator {
             System.out.format("final void skip%sToken() {\npos+=%d;\n}%n", keyword, keyword.length());
         });
     }
-    static void GenerateSqlTokenHash() {
+    static void GenerateSqlTokenHash(String fileName) {
         initShrinkCharTbl();
         try {
-            Files.lines(Paths.get("minimal_sql_tokens.txt")).forEach(x -> {
-                System.out.format("    public static final int %s = 0x%x%04x;%n", x, genHash2(x.toCharArray()) & 0xFFFF, x.length());
+            Files.lines(Paths.get(fileName))
+                    .filter(x -> x.length()>0)
+                    .forEach(x -> {
+                System.out.format("    public static final int %-16s = 0x%04x%04x;%n", x, genHash2(x.toCharArray()) & 0xFFFF, x.length());
+//                System.out.format("    public static final int %s = 0x%x;%n", x, genHash2(x.toCharArray()));
             });
 //            System.out.println("conflict count : "+count);
         } catch (IOException e) {
@@ -349,9 +345,11 @@ public class MatchMethodGenerator {
     public static void main(String[] args) {
         //isXXXTokenGenerator();
         //skipXXXTokenGenerator();
-//        sqlKeyHastTest();
+//        sqlKeyHastTest("sql_tokens.txt", s -> genHash(s.toCharArray()), 0x1FFL);
+//        sqlKeyHastTest("minimal_sql_tokens.txt", s -> (long)genHash2(s.toCharArray()), 0x1FL);
+//        sqlKeyHastTest("minimal_sql_tokens.txt", s -> genHash(s.toCharArray()), 0x3FL);
 //        run();
 //        test1();
-        GenerateSqlTokenHash();
+        GenerateSqlTokenHash("minimal_sql_tokens.txt");
     }
 }

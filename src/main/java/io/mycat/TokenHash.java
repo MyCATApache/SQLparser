@@ -1,7 +1,7 @@
 package io.mycat;
 
 /**
- * Created by Fanfan on 2017/2/27.
+ * Created by Kaiz on 2017/2/27.
  */
 public class TokenHash {
     public static final long ACCESSIBLE = 0xe5d3fcdb27864L;

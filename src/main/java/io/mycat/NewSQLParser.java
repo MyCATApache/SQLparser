@@ -77,6 +77,9 @@ public class NewSQLParser {
     private final byte GREATER = 17;
     private final byte DOT = 18;
     private final byte COMMENTS = 19;
+    private final byte ANNOTATION_BALANCE = 20;
+    private final byte ANNOTATION_START = 21;
+    private final byte ANNOTATION_END = 22;
 
     byte[] sql;
     final byte[] charType = new byte[512];
@@ -118,7 +121,7 @@ public class NewSQLParser {
 
     }
 
-    int parseToken(byte[] sql, int pos, int sqlLength, byte c) {
+    int parseToken(byte[] sql, int pos, final int sqlLength, byte c) {
         int cType;
         int start = pos;
         int size = 1;
@@ -135,7 +138,7 @@ public class NewSQLParser {
         return pos;
     }
 
-    int parseString(byte[] sql, int pos, int sqlLength, int startSign) {
+    int parseString(byte[] sql, int pos, final int sqlLength, int startSign) {
         int size = 1;
         int start = pos;
         int c;
@@ -153,7 +156,7 @@ public class NewSQLParser {
         return ++pos;
     }
 
-    int parseDigits(byte[] sql, int pos, int sqlLength) {
+    int parseDigits(byte[] sql, int pos, final int sqlLength) {
         int start = pos;
         int size = 1;
         while (++pos<sqlLength && charType[sql[pos]<<1] == DIGITS) {
@@ -163,12 +166,46 @@ public class NewSQLParser {
         return pos;
     }
 
-    int skipSingleLineComment(byte[] sql, int pos, int sqlLength) {
+    int parseAnnotation(byte[] sql, int pos, final int sqlLength) {
+        hashArray.set(ANNOTATION_START, pos-2, 2);
+        //byte cur = sql[pos];
+        //byte next = sql[++pos];
+        byte c;
+        byte cType;
+        while (pos < sqlLength) {
+            c = sql[pos];
+            cType = charType[c<<1];
+            switch (cType) {
+                case DIGITS:
+                    pos = parseDigits(sql, pos, sqlLength);
+                    break;
+                case CHARS:
+                    pos = parseToken(sql, pos, sqlLength, c);
+                    break;
+                case STAR:
+                    if (sql[++pos] == '/') {
+                        hashArray.set(ANNOTATION_END, pos-1, 2);
+                        return ++pos;
+                    } else {
+                        hashArray.set(cType, pos-1, 1);
+                    }
+                    break;
+                case EQUAL:
+                    hashArray.set(cType,pos,1);
+                default:
+                    pos++;
+                    break;
+            }
+        }
+        return pos;
+    }
+
+    int skipSingleLineComment(byte[] sql, int pos, final int sqlLength) {
         while (++pos < sqlLength && sql[pos]!='\n');
         return pos;
     }
 
-    int skipMultiLineComment(byte[] sql, int pos, int sqlLength, byte pre) {
+    int skipMultiLineComment(byte[] sql, int pos, final int sqlLength, byte pre) {
         //int start = pos-2;
         //int size=2;
         byte cur = sql[pos];
@@ -186,7 +223,7 @@ public class NewSQLParser {
 
     void tokenize(byte[] sql) {
         int pos = 0;
-        int sqlLength = sql.length;
+        final int sqlLength = sql.length;
         this.sql = sql;
         hashArray.init();
         byte c;
@@ -223,10 +260,22 @@ public class NewSQLParser {
                     next = sql[++pos];
                     if (next == '*') {
                         next = sql[++pos];
-                        if (next == '#'||next == '!') {
+                        if (next == '!'||next == '#') {
                             //处理mycat注解
-                        } //还有 /*balance*/ 注解
-                        pos = skipMultiLineComment(sql, ++pos, sqlLength, next);
+                            if ((sql[++pos]&0xDF) == 'M' && (sql[++pos]&0xDF) == 'Y' &&(sql[++pos]&0xDF) == 'C' &&(sql[++pos]&0xDF) == 'A' &&(sql[++pos]&0xDF) == 'T'
+                                    && sql[++pos] == ':') {
+                                pos = parseAnnotation(sql, pos, sqlLength);
+                            } else {
+                                pos = skipMultiLineComment(sql, ++pos, sqlLength, next);
+                            }
+                        } else if ((next&0xDF) == 'B' && (sql[++pos]&0xDF) == 'A' && (sql[++pos]&0xDF) == 'L' && (sql[++pos]&0xDF) == 'A'
+                                && (sql[++pos]&0xDF) == 'N' && (sql[++pos]&0xDF) == 'C' && (sql[++pos]&0xDF) == 'E'
+                                && sql[++pos] == '*' && sql[++pos] == '/' ) { //还有 /*balance*/ 注解
+                            hashArray.set(ANNOTATION_BALANCE, pos-1, 1);
+                            hashArray.set(ANNOTATION_END, pos, 1);
+                            pos++;
+                        } else
+                            pos = skipMultiLineComment(sql, ++pos, sqlLength, next);
                     } else if (next == '/') {
                         pos = skipSingleLineComment(sql, pos, sqlLength);
                     } else {
@@ -439,7 +488,51 @@ public class NewSQLParser {
         return pos;
     }
 
+    int pickAnnotation(int pos, final int arrayCount, SQLContext context) {
+        int intHash;
+        long hash;
+        while (pos < arrayCount) {
+            intHash = hashArray.getIntHash(pos);
+            hash = hashArray.getHash(pos);
+            switch (intHash) {
+                case IntTokenHash.ANNOTATION_END:
+                    return ++pos;
+                case IntTokenHash.DATANODE:
+                    context.setAnnotationType(SQLContext.ANNOTATION_DATANODE);
+                    if (hashArray.getType(++pos) == EQUAL) {
+                        context.setAnnotationValue(hashArray.getHash(++pos));
+                    }
+                    break;
+                case IntTokenHash.SCHEMA:
+                    context.setAnnotationType(SQLContext.ANNOTATION_SCHEMA);
+                    if (hashArray.getType(++pos) == EQUAL) {
+                        context.setAnnotationValue(hashArray.getHash(++pos));
+                    }
+                    break;
+                case IntTokenHash.SQL:
+                    context.setAnnotationType(SQLContext.ANNOTATION_SQL);
+                    if (hashArray.getType(++pos) == EQUAL) {
 
+                    }
+                    break;
+                case IntTokenHash.CATLET:
+                    context.setAnnotationType(SQLContext.ANNOTATION_CATLET);
+                    if (hashArray.getType(++pos) == EQUAL) {
+
+                    }
+                    break;
+                case IntTokenHash.DB_TYPE:
+                    context.setAnnotationType(SQLContext.ANNOTATION_DB_TYPE);
+                    if (hashArray.getType(++pos) == EQUAL) {
+                        context.setAnnotationValue(hashArray.getHash(++pos));
+                    }
+                    break;
+                default:
+                    ++pos;
+            }
+        }
+        return pos;
+    }
     /*
     * 用于进行第一遍处理，处理sql类型以及提取表名
      */
@@ -539,7 +632,13 @@ public class NewSQLParser {
                         pos++;
                     }
                     break;
-
+                case IntTokenHash.ANNOTATION_BALANCE:
+                    context.setAnnotationType(SQLContext.ANNOTATION_BALANCE);
+                    pos++;
+                    break;
+                case IntTokenHash.ANNOTATION_START:
+                    pos = pickAnnotation(++pos, arrayCount, context);
+                    break;
                 default:
                     pos++;
                     break;
@@ -582,7 +681,10 @@ public class NewSQLParser {
 //                "tbl_C\n" + //79
 //                "*/ tbl_D d;").getBytes(StandardCharsets.UTF_8);
 //        byte[] src = sql3.getBytes(StandardCharsets.UTF_8);
-        byte[] src = "SELECT * FROM table LIMIT 95,-1".getBytes(StandardCharsets.UTF_8);
+//        byte[] src = "SELECT * FROM table LIMIT 95,-1".getBytes(StandardCharsets.UTF_8);
+//        byte[] src = "/*balance*/select * from tbl_A where id=1;".getBytes(StandardCharsets.UTF_8);
+        byte[] src = "/*!MyCAT:DB_Type=Master*/select * from tbl_A where id=1;".getBytes(StandardCharsets.UTF_8);
+
 
 //        long min = 0;
 //        for (int i = 0; i < 50; i++) {

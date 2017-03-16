@@ -131,6 +131,7 @@ public class MatchMethodGenerator {
         shrinkCharTbl[0] = 1;//从 $ 开始计算
         IntStream.rangeClosed('0', '9').forEach(c -> shrinkCharTbl[c-'$'] = (byte)(c-'0'+2));
         IntStream.rangeClosed('A', 'Z').forEach(c -> shrinkCharTbl[c-'$'] = (byte)(c-'A'+12));
+        IntStream.rangeClosed('a', 'z').forEach(c -> shrinkCharTbl[c-'$'] = (byte)(c-'a'+12));
         shrinkCharTbl['_'-'$'] = (byte)38;
     }
 
@@ -327,15 +328,30 @@ public class MatchMethodGenerator {
             System.out.format("final void skip%sToken() {\npos+=%d;\n}%n", keyword, keyword.length());
         });
     }
-    static void GenerateSqlTokenHash(String fileName) {
+    static void GenerateLongTokenHash(String fileName) {
+        initShrinkCharTbl();
+        try {
+            Files.lines(Paths.get(fileName))
+                    .filter(x -> x.length()>0)
+                    .forEach(x -> {
+//                System.out.format("    public static final int %-16s = 0x%04x%04x;%n", x, genHash2(x.toCharArray()) & 0xFFFF, x.length());
+                System.out.format("    public static final long %-12s = 0x%xL;%n", x, genHash(x.toCharArray()));
+            });
+//            System.out.println("conflict count : "+count);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    static void GenerateIntTokenHash(String fileName) {
         initShrinkCharTbl();
         try {
             Files.lines(Paths.get(fileName))
                     .filter(x -> x.length()>0)
                     .forEach(x -> {
                 System.out.format("    public static final int %-16s = 0x%04x%04x;%n", x, genHash2(x.toCharArray()) & 0xFFFF, x.length());
-//                System.out.format("    public static final int %s = 0x%x;%n", x, genHash2(x.toCharArray()));
-            });
+//                        System.out.format("    public static final long %-12s = 0x%x;%n", x, genHash(x.toCharArray()));
+                    });
 //            System.out.println("conflict count : "+count);
         } catch (IOException e) {
             e.printStackTrace();
@@ -350,6 +366,11 @@ public class MatchMethodGenerator {
 //        sqlKeyHastTest("minimal_sql_tokens.txt", s -> genHash(s.toCharArray()), 0x3FL);
 //        run();
 //        test1();
-        GenerateSqlTokenHash("minimal_sql_tokens.txt");
+//        GenerateIntTokenHash("minimal_sql_tokens.txt");
+//        GenerateLongTokenHash("sql_tokens.txt");
+        initShrinkCharTbl();
+        System.out.format("0x%xL;%n", genHash("dn1".toCharArray()));
+
+
     }
 }

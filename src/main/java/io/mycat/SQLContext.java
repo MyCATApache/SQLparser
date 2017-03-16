@@ -16,6 +16,10 @@ import java.util.Arrays;
  3. 当前SQL语句所用到的表名（需要和库名关联）
  4. 当前SQL语句的类型
  5. 当前SQL语句结果集要求（limit）
+ 怎样获取SQL类型
+ 怎样获取SQL表名
+ 怎样获取注解
+ 怎样获取mycat命令
  */
 public class SQLContext {
     private int[] tblResult;  //by kaiz : 记录格式：[{schema index(defaults 0), tbl name start pos, tbl name size}]
@@ -31,6 +35,7 @@ public class SQLContext {
     private int tblResultArraySize = 128;//todo : 测试期先写死，后期考虑从设置参数中读取 by kaiz
     private int schemaResultArraySize = 64;//todo : 测试期先写死，后期考虑从设置参数中读取 by kaiz
     private byte annotationType;
+    private long annotationValue;
     private short sqlCount;
 
 
@@ -101,6 +106,7 @@ public class SQLContext {
         sqlHash = 0;
         sqlType = 0;
         annotationType = 0;
+        annotationValue = 0;
         hasLimit = false;
         limitStart = 0;
         limitCount = 0;
@@ -183,16 +189,17 @@ public class SQLContext {
     }
 
     public boolean hasAnnotation() { //by kaiz : 是否包含注解，此处还需要完善
-        return false;
+        return this.annotationType!=0;
     }
 
     public void setAnnotationType(byte type) {
         this.annotationType = type;
     }
-
+    public void setAnnotationValue(long value) { this.annotationValue = value; }
     public void setAnnotationStart(int pos) {}
     public void setAnnotationSize(int size) {}
     public byte getAnnotationType() { return this.annotationType; }
+    public long getAnnotationValue() { return this.annotationValue; }
     public String getAnnotationContent() { return null; } //by kaiz : 返回注解等号后面的内容
 
 }

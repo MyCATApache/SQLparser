@@ -20,6 +20,7 @@ public class SQLParserTest extends TestCase {
         parser = new NewSQLParser();
         context = new SQLContext();
         parser.init();
+        MatchMethodGenerator.initShrinkCharTbl();
     }
 
     @Test
@@ -258,13 +259,65 @@ public class SQLParserTest extends TestCase {
         assertEquals("tbl_A", context.getTableName(0));
     }
 
-//    @Test
-//    public void testNormalTruncate() throws Exception {
-//        String sql = "Truncate TABLE IF EXISTS tbl_A;";
-//        parser.parse(sql.getBytes(), context);
-//        assertEquals(SQLContext.TRUNCATE_SQL, context.getSQLType());
-//        assertEquals("tbl_A", context.getTableName(0));
-//    }
+    @Test
+    public void testAnnotationBalance() throws Exception {
+        String sql = "/*balance*/select * from tbl_A where id=1;";
+        parser.parse(sql.getBytes(), context);
+        assertEquals(SQLContext.SELECT_SQL, context.getSQLType());
+        assertEquals("tbl_A", context.getTableName(0));
+        assertEquals(SQLContext.ANNOTATION_BALANCE, context.getAnnotationType());
+    }
+
+    @Test
+    public void testAnnotationDBType() throws Exception {
+        String sql = "/*!MyCAT:DB_Type=Master*/select * from tbl_A where id=1;";
+        parser.parse(sql.getBytes(), context);
+        assertEquals(SQLContext.SELECT_SQL, context.getSQLType());
+        assertEquals("tbl_A", context.getTableName(0));
+        assertEquals(SQLContext.ANNOTATION_DB_TYPE, context.getAnnotationType());
+        assertEquals(TokenHash.MASTER, context.getAnnotationValue());
+    }
+
+    @Test
+    public void testAnnotationSchema() throws Exception {
+        String sql = "/*!MyCAT:schema=testDB*/select * from tbl_A where id=1;";
+        parser.parse(sql.getBytes(), context);
+        assertEquals(SQLContext.SELECT_SQL, context.getSQLType());
+        assertEquals("tbl_A", context.getTableName(0));
+        assertEquals(SQLContext.ANNOTATION_SCHEMA, context.getAnnotationType());
+        assertEquals(MatchMethodGenerator.genHash("testDB".toCharArray()), context.getAnnotationValue());
+    }
+
+    @Test
+    public void testAnnotationDataNode() throws Exception {
+        String sql = "/*!MyCAT:DataNode=dn1*/select * from tbl_A where id=1;";
+        parser.parse(sql.getBytes(), context);
+        assertEquals(SQLContext.SELECT_SQL, context.getSQLType());
+        assertEquals("tbl_A", context.getTableName(0));
+        assertEquals(SQLContext.ANNOTATION_DATANODE, context.getAnnotationType());
+        assertEquals(MatchMethodGenerator.genHash("dn1".toCharArray()), context.getAnnotationValue());
+    }
+
+    @Test
+    public void testAnnotationCatlet() throws Exception {
+        String sql = "/*!MyCAT:catlet=demo.catlets.ShareJoin*/select * from tbl_A where id=1;";
+        parser.parse(sql.getBytes(), context);
+        assertEquals(SQLContext.SELECT_SQL, context.getSQLType());
+        assertEquals("tbl_A", context.getTableName(0));
+        assertEquals(SQLContext.ANNOTATION_CATLET, context.getAnnotationType());
+        //TODO 还需要完善提取catlet的类型
+    }
+
+    @Test
+    public void testAnnotationSQL() throws Exception {
+        String sql = "/*!MyCAT:sql=select id from tbl_B where id = 101*/select * from tbl_A where id=1;";
+        parser.parse(sql.getBytes(), context);
+        assertEquals(SQLContext.SELECT_SQL, context.getSQLType());
+        assertEquals("tbl_A", context.getTableName(0));
+        assertEquals(SQLContext.ANNOTATION_SQL, context.getAnnotationType());
+        //TODO 还需要完善提取SQL的内容和where条件
+    }
+
     private static final String sql1 = "select t3.*,ztd3.TypeDetailName as UseStateName\n" +
             "from\n" +
             "( \n" +

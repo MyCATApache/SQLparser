@@ -13,13 +13,13 @@ import java.util.stream.IntStream;
 public class SQLParserTest extends TestCase {
 //    SQLParser parser;
     NewSQLParser parser;
-    SQLContext context;
+    NewSQLContext context;
 
     @Before
     protected void setUp() throws Exception {
         parser = new NewSQLParser();
-        context = new SQLContext();
-        parser.init();
+        context = new NewSQLContext();
+        //parser.init();
         MatchMethodGenerator.initShrinkCharTbl();
     }
 
@@ -316,6 +316,37 @@ public class SQLParserTest extends TestCase {
         assertEquals("tbl_A", context.getTableName(0));
         assertEquals(SQLContext.ANNOTATION_SQL, context.getAnnotationType());
         //TODO 还需要完善提取SQL的内容和where条件
+    }
+
+    @Test
+    public void testSimpleMultiSQL() throws Exception {
+        String sql = "insert tbl_A(id, val) values(1, 2);\n"+
+                "insert tbl_B(id, val) values(2, 2);\n"+
+                "insert tbl_C(id, val) values(3, 2);\n"+
+                "insert tbl_D(id, val) values(4, 2);\n"+
+                "insert tbl_E(id, val) values(5, 2);\n"+
+                "insert tbl_F(id, val) values(6, 2);\n"+
+                "insert tbl_G(id, val) values(7, 2);\n"+
+                "insert tbl_H(id, val) values(8, 2);\n"+
+                "insert tbl_I(id, val) values(9, 2);\n"+
+                "insert tbl_J(id, val) values(10, 2);\n"+
+                "insert tbl_K(id, val) values(11, 2);\n"+
+                "insert tbl_L(id, val) values(12, 2);\n"+
+                "insert tbl_M(id, val) values(13, 2);\n"+
+                "insert tbl_N(id, val) values(14, 2);\n"+
+                "insert tbl_O(id, val) values(15, 2);\n"+
+                "insert tbl_P(id, val) values(16, 2);\n"+
+                "insert tbl_Q(id, val) values(17, 2);\n"+
+                "insert tbl_R(id, val) values(18, 2);\n"+
+                "SELECT id, val FROM tbl_S where id=19;\n"+
+                "insert tbl_T(id, val) values(20, 2)";
+        parser.parse(sql.getBytes(), context);
+        assertEquals(20, context.getSQLCount());
+        context.setSQLIdx(19);
+        assertEquals("tbl_A", context.getSQLTableName(0, 0));
+        assertEquals("tbl_T", context.getSQLTableName(19, 0));
+        assertEquals(NewSQLContext.SELECT_SQL, context.getSQLType(18));
+        assertEquals(NewSQLContext.INSERT_SQL, context.getSQLType(19));
     }
 
     private static final String sql1 = "select t3.*,ztd3.TypeDetailName as UseStateName\n" +

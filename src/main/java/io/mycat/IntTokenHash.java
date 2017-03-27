@@ -7,6 +7,7 @@ public class IntTokenHash {
     public static final int ANNOTATION_BALANCE= 0x00140001;
     public static final int ANNOTATION_START = 0x00150002;
     public static final int ANNOTATION_END   = 0x00160002;
+    public static final int SQL_DELIMETER = 0x000c0001;
 
     //generate by MatchMethodGenerator.GenerateSqlTokenHash
     public static final int AS               = 0x46580002;

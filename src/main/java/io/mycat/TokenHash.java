@@ -5,6 +5,7 @@ package io.mycat;
  */
 public class TokenHash {
     public static final long ACCESSIBLE   = 0xe5d3fcdb27864L;
+    public static final long ACCESS_COUNT = 0x5e524ff62d6416c2L;
     public static final long ACCOUNT      = 0xda8af7222L;
     public static final long ACTION       = 0x555aaeb8L;
     public static final long ADD          = 0x5142L;
@@ -28,6 +29,7 @@ public class TokenHash {
     public static final long AUTHORS      = 0xe27d1ca23L;
     public static final long AUTOEXTEND_SIZE = 0x464aad1de667b2c4L;
     public static final long AUTO_INCREMENT = 0xe297db9809eea053L;
+    public static final long AUTO_REFRESH = 0x61c0bcdb33d9ba87L;
     public static final long AVG_ROW_LENGTH = 0xbaa254a038eac478L;
     public static final long AVG          = 0x5427L;
     public static final long BACKEND      = 0xeb5fc043dL;
@@ -53,6 +55,7 @@ public class TokenHash {
     public static final long BY           = 0x239L;
     public static final long BYTE         = 0xe9d50L;
     public static final long CACHE        = 0x268a383L;
+    public static final long CACHE_TIME   = 0x10a23d92583364L;
     public static final long CALL         = 0xf0bb0L;
     public static final long CASCADE      = 0xfd3c63759L;
     public static final long CASCADED     = 0x288eabedd50L;
@@ -695,4 +698,5 @@ public class TokenHash {
     public static final long SQL_TSI_MONTH = 0x8c3f094f1b906a03L;
     public static final long SQL_TSI_QUARTER = 0xe9ec207893081b87L;
     public static final long SQL_TSI_YEAR = 0xea71ed7ecec4f35bL;
+
 }

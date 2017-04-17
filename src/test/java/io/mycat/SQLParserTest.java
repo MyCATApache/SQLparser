@@ -231,6 +231,62 @@ public class SQLParserTest extends TestCase {
     }
 
     @Test
+    public void testCase05() throws Exception {
+        parser.parse(sql4.getBytes(StandardCharsets.UTF_8), context);
+        IntStream.range(0, context.getTableCount()).forEach(i -> System.out.println(context.getSchemaName(i) + '.' + context.getTableName(i)));
+        assertEquals(6, context.getTableCount());
+    }
+
+    @Test
+    public void testCase06() throws Exception {
+        parser.parse(sql5.getBytes(StandardCharsets.UTF_8), context);
+        IntStream.range(0, context.getTableCount()).forEach(i -> System.out.println(context.getSchemaName(i) + '.' + context.getTableName(i)));
+        assertEquals(2, context.getTableCount());
+    }
+
+    @Test
+    public void testCase07() throws Exception {
+        parser.parse(sql6.getBytes(StandardCharsets.UTF_8), context);
+        IntStream.range(0, context.getTableCount()).forEach(i -> System.out.println(context.getSchemaName(i) + '.' + context.getTableName(i)));
+        assertEquals(2, context.getTableCount());
+    }
+
+    @Test
+    public void testCase08() throws Exception {
+        parser.parse(sql7.getBytes(StandardCharsets.UTF_8), context);
+        IntStream.range(0, context.getTableCount()).forEach(i -> System.out.println(context.getSchemaName(i) + '.' + context.getTableName(i)));
+        assertEquals(2, context.getTableCount());
+    }
+
+    @Test
+    public void testCase09() throws Exception {
+        parser.parse(sql8.getBytes(StandardCharsets.UTF_8), context);
+        IntStream.range(0, context.getTableCount()).forEach(i -> System.out.println(context.getSchemaName(i) + '.' + context.getTableName(i)));
+        assertEquals(2, context.getTableCount());
+    }
+
+    @Test
+    public void testCase10() throws Exception {
+        parser.parse(sql9.getBytes(StandardCharsets.UTF_8), context);
+        IntStream.range(0, context.getTableCount()).forEach(i -> System.out.println(context.getSchemaName(i) + '.' + context.getTableName(i)));
+        assertEquals(2, context.getTableCount());
+    }
+
+    @Test
+    public void testCase11() throws Exception {
+        parser.parse(sql10.getBytes(StandardCharsets.UTF_8), context);
+        IntStream.range(0, context.getTableCount()).forEach(i -> System.out.println(context.getSchemaName(i) + '.' + context.getTableName(i)));
+        assertEquals(1, context.getTableCount());
+    }
+
+    @Test
+    public void testCase12() throws Exception {
+        parser.parse(sql11.getBytes(StandardCharsets.UTF_8), context);
+        IntStream.range(0, context.getTableCount()).forEach(i -> System.out.println(context.getSchemaName(i) + '.' + context.getTableName(i)));
+        assertEquals(22, context.getTableCount());
+    }
+
+    @Test
     public void testNormalComment() {
         String sql = "select * from tbl_A, -- 单行注释\n" +
                 "tbl_B b, #另一种单行注释\n" +
@@ -275,7 +331,7 @@ public class SQLParserTest extends TestCase {
         assertEquals(SQLContext.SELECT_SQL, context.getSQLType());
         assertEquals("tbl_A", context.getTableName(0));
         assertEquals(SQLContext.ANNOTATION_DB_TYPE, context.getAnnotationType());
-        assertEquals(TokenHash.MASTER, context.getAnnotationValue());
+        assertEquals(TokenHash.MASTER, context.getAnnotationValue(SQLContext.ANNOTATION_DB_TYPE));
     }
 
     @Test
@@ -285,7 +341,7 @@ public class SQLParserTest extends TestCase {
         assertEquals(SQLContext.SELECT_SQL, context.getSQLType());
         assertEquals("tbl_A", context.getTableName(0));
         assertEquals(SQLContext.ANNOTATION_SCHEMA, context.getAnnotationType());
-        assertEquals(MatchMethodGenerator.genHash("testDB".toCharArray()), context.getAnnotationValue());
+        assertEquals(MatchMethodGenerator.genHash("testDB".toCharArray()), context.getAnnotationValue(SQLContext.ANNOTATION_SCHEMA));
     }
 
     @Test
@@ -295,7 +351,7 @@ public class SQLParserTest extends TestCase {
         assertEquals(SQLContext.SELECT_SQL, context.getSQLType());
         assertEquals("tbl_A", context.getTableName(0));
         assertEquals(SQLContext.ANNOTATION_DATANODE, context.getAnnotationType());
-        assertEquals(MatchMethodGenerator.genHash("dn1".toCharArray()), context.getAnnotationValue());
+        assertEquals(MatchMethodGenerator.genHash("dn1".toCharArray()), context.getAnnotationValue(SQLContext.ANNOTATION_DATANODE));
     }
 
     @Test
@@ -312,9 +368,9 @@ public class SQLParserTest extends TestCase {
     public void testAnnotationSQL() throws Exception {
         String sql = "/*!MyCAT:sql=select id from tbl_B where id = 101*/select * from tbl_A where id=1;";
         parser.parse(sql.getBytes(), context);
-        assertEquals(SQLContext.SELECT_SQL, context.getSQLType());
+        assertEquals(NewSQLContext.SELECT_SQL, context.getSQLType());
         assertEquals("tbl_A", context.getTableName(0));
-        assertEquals(SQLContext.ANNOTATION_SQL, context.getAnnotationType());
+        assertEquals(NewSQLContext.ANNOTATION_SQL, context.getAnnotationType());
         //TODO 还需要完善提取SQL的内容和where条件
     }
 
@@ -347,6 +403,39 @@ public class SQLParserTest extends TestCase {
         assertEquals("tbl_T", context.getSQLTableName(19, 0));
         assertEquals(NewSQLContext.SELECT_SQL, context.getSQLType(18));
         assertEquals(NewSQLContext.INSERT_SQL, context.getSQLType(19));
+
+    }
+
+    @Test
+    public void testUseSchemaSQL() throws Exception {
+        String sql = "USE `mycat`;";
+        parser.parse(sql.getBytes(), context);
+        assertEquals(NewSQLContext.USE_SQL, context.getSQLType());
+        assertEquals("mycat", context.getSchemaName(0));
+    }
+
+    @Test
+    public void testGetRealSQL() throws Exception {
+        String sql = "/*!MyCAT:sql=select id from tbl_B where id = 101*/select * from tbl_A where id=1;";
+        parser.parse(sql.getBytes(), context);
+        assertEquals(NewSQLContext.SELECT_SQL, context.getSQLType());
+        assertEquals("tbl_A", context.getTableName(0));
+        assertEquals(NewSQLContext.ANNOTATION_SQL, context.getAnnotationType());
+        assertEquals(50, context.getRealSQLOffset(0));
+        assertEquals("select * from tbl_A where id=1;", context.getRealSQL(0));
+    }
+
+    @Test
+    public void testAnnotationCacheSQL() throws Exception {
+        String sql = "/*!MyCAT:cache_time=1000 auto_refresh=true access_count=100*/select * from tbl_A where id=1;";
+        parser.parse(sql.getBytes(), context);
+        assertEquals(NewSQLContext.SELECT_SQL, context.getSQLType());
+        assertEquals("tbl_A", context.getTableName(0));
+        assertEquals(NewSQLContext.ANNOTATION_SQL_CACHE, context.getAnnotationType());
+        assertEquals(1000, context.getAnnotationValue(NewSQLContext.ANNOTATION_CACHE_TIME));
+        assertEquals(100, context.getAnnotationValue(NewSQLContext.ANNOTATION_ACCESS_COUNT));
+        assertEquals(TokenHash.TRUE, context.getAnnotationValue(NewSQLContext.ANNOTATION_AUTO_REFRESH));
+
     }
 
     private static final String sql1 = "select t3.*,ztd3.TypeDetailName as UseStateName\n" +
@@ -713,4 +802,174 @@ public class SQLParserTest extends TestCase {
             "\t\t     AND (p.PRODUCT_ID) NOT IN (\n" +
             "\t\t\t SELECT PRODUCT_ID FROM TProduct WHERE PRODUCT_STATE = 4 ";
 
+    static String sql4 = "select \n" +
+            "a.cust_id  cust_id ,\n" +
+            "ifnull(f.cust_flag,'') cust_flag,\n" +
+            "a.create_date  reg_time,\n" +
+            "b.cust_reg_channel     reg_ditch_code,\n" +
+            "ifnull(b.cust_reg_inviter,'')  cust_reg_inviter,\n" +
+            "ifnull(e.cust_nname,'')  cust_inviter_nname,\n" +
+            "a.cust_nname  cust_nname,\n" +
+            "case   when  c.type=1  or   c.type=3 then 1 else 0 end is_weixin,\n" +
+            "case   when  c.type=2  or   c.type=3 then 1 else 0 end is_weibo,\n" +
+            "a.cust_phone cust_phone,\n" +
+            "a.cust_status cust_status,\n" +
+            "a.cust_location cust_location,\n" +
+            "a.cust_sex cust_sex,\n" +
+            "d.generalize_scene     generalize_scene,\n" +
+            "d.useage_person useage_person,\n" +
+            "ifnull(b.cust_reg_inviter_num,0)   generalize_num\n" +
+            "from tbl_cust_info a inner join tbl_cust b on a.cust_id=b.cust_id\n" +
+            "                         left join (select  cust_id, sum(type) type \n" +
+            "\t\t\t\t\t\t\t\t\t  from  tbl_third_login  where   `type` in(1,2)  \n" +
+            "                                      group by cust_id) c on c.cust_id=b.cust_id\n" +
+            "                         left join  tbl_cust_info e  on b.cust_reg_inviter=e.cust_id\n" +
+            "                         left  join tbl_check d on b.cust_reg_channel=d.ditch_code\n" +
+            "                         left join tbl_cust_flag f on f.cust_id=a.cust_id\n" +
+            "where a.update_timestamp>DATE_SUB(now(),  INTERVAL  ${N}    MINUTE) or  b.update_timestamp>DATE_SUB(now(),  INTERVAL  30  MINUTE) \n";
+
+    static String sql5 = "select  \n" +
+            "a_cust_id cust_id,\n" +
+            "count(a_cust_id) friend_num \n" +
+            "from tbl_friends\n" +
+            "where    a_cust_id  in (select a_cust_id  from  tbl_friends\n" +
+            "                        where update_timestamp>DATE_SUB(now(),  INTERVAL  30  MINUTE))\n" +
+            "group by a_cust_id";
+
+    static String sql6 = "select  \n" +
+            "cust_id,\n" +
+            "sum(cost) integral_total \n" +
+            "from tbl_IHB \n" +
+            "where    order_type=1 and  cust_id\n" +
+            "in (select cust_id from  tbl_IHB  \n" +
+            "    where update_timestamp>DATE_SUB(now(),  INTERVAL  30  MINUTE))\n" +
+            "group by  cust_id ";
+
+    static String sql7 = "select  \n" +
+            "CUST_ID,\n" +
+            "sum(PRICE)  amount,\n" +
+            "count(1)  cnt\n" +
+            "from  tbl_r\n" +
+            "where cust_id in(select cust_id from   tbl_r where update_timestamp>DATE_SUB(now(),  INTERVAL  30  MINUTE))\n" +
+            "group by CUST_ID";
+
+    static String sql8 = "select  \n" +
+            " tc_id CUST_ID ,\n" +
+            "sum(rprice)  get_rb,\n" +
+            "count(1)   get_rc ,\n" +
+            "sum(p)  get_ra\n" +
+            "from  tbl_r\n" +
+            "where tc_id in(select tc_id from   tbl_r where update_timestamp>DATE_SUB(now(),  INTERVAL  30  MINUTE))\n" +
+            "group by tc_id";
+
+    static String sql9 = "select  CUST_ID,\n" +
+            "sum(case packet_s when 0 then 1 else 0 end )  rc_cnt,\n" +
+            "sum(case packet_s when 0 then packet_a else 0 end )  rc_amount,\n" +
+            "sum(case packet_s when 1 then 1 else 0 end )  rc_cnt,\n" +
+            "sum(case packet_s when 1 then packet_a else 0 end )  ra_amount \n" +
+            "from tbl_r\n" +
+            "where  packet_s  in (0,1)\n" +
+            "and   cust_id in(select cust_id from  tbl_r where update_timestamp>DATE_SUB(now(),  INTERVAL  30  MINUTE))\n" +
+            "group by CUST_ID";
+
+    static String sql10 = "select \n" +
+            "ifnull(max(CONVERT(forward_id,SIGNED)),0) max_forward_id1,\n" +
+            "ifnull(max(CONVERT(forward_id,SIGNED)),0) max_forward_id2,\n" +
+            "ifnull(max(CONVERT(forward_id,SIGNED)),0) max_forward_id3,\n" +
+            "ifnull(max(CONVERT(forward_id,SIGNED)),0) max_forward_id0\n" +
+            "from tbl_forward;";
+
+    static String sql11 = "select  \n" +
+            "a.club_up_1 forward_id,\n" +
+            "d.cust_id cust_id,\n" +
+            "d.cust_nname cust_nname,\n" +
+            "e.id forward_info_id,\n" +
+            "e.info_type forward_info_type,\n" +
+            "e.info_context forward_info_context,\n" +
+            "b.money forward_income,\n" +
+            "c.transfer_price forward_price,\n" +
+            "f.transfer_price beforward_price,\n" +
+            "b.create_time    forward_date,\n" +
+            "a.club_id beforward_id,\n" +
+            "f.create_date   beforward_date,\n" +
+            "1 beforward_level,\n" +
+            "date(b.create_time) date ,\n" +
+            "now() create_date \n" +
+            "from  rrz_user_forward a\n" +
+            "inner join  tbl_forward_s b  on a.club_id=b.club_id \n" +
+            "inner join  tbl_cust_2_info c  on  a.club_up_1=c.id\n" +
+            "inner join tbl_cust_info d on  c.cust_id=d.cust_id\n" +
+            "inner join tbl_info  e on a.info_id=e.id\n" +
+            "inner join tbl_cust_2_info f on  a.club_id=f.id                     \n" +
+            "where  a.club_up_1 is not  null   and  b.type=1   and  a.club_id>100\n" +
+            "union all  \n" +
+            "select  \n" +
+            "a.club_up_2 forwarded_id,\n" +
+            "d.cust_id cust_id,\n" +
+            "d.cust_nname cust_nname,\n" +
+            "e.id forward_info_id,\n" +
+            "e.info_type forward_info_type,\n" +
+            "e.info_context forward_info_context,\n" +
+            "b.money forward_income,\n" +
+            "c.transfer_price forward_price,\n" +
+            "f.transfer_price beforward_price,\n" +
+            "b.create_time    forward_date,\n" +
+            "a.club_id beforward_id,\n" +
+            "f.create_date   beforward_date,\n" +
+            "2 beforward_level,\n" +
+            "date(b.create_time) date ,\n" +
+            "now() create_date \n" +
+            "from  rrz_user_forward a\n" +
+            "inner join  tbl_forward_s b  on a.club_id=b.club_id \n" +
+            "inner join  tbl_cust_2_info c  on  a.club_up_2=c.id\n" +
+            "inner join tbl_cust_info d on  c.cust_id=d.cust_id\n" +
+            "inner join tbl_info  e on a.info_id=e.id\n" +
+            "inner join tbl_cust_2_info f on  a.club_id=f.id                     \n" +
+            "where  a.club_up_2 is not  null   and  b.type=2    and  a.club_id>100\n" +
+            "union all\n" +
+            "select  \n" +
+            "a.club_up_3 forwarded_id,\n" +
+            "d.cust_id cust_id,\n" +
+            "d.cust_nname cust_nname,\n" +
+            "e.id forward_info_id,\n" +
+            "e.info_type forward_info_type,\n" +
+            "e.info_context forward_info_context,\n" +
+            "b.money forward_income,\n" +
+            "c.transfer_price forward_price,\n" +
+            "f.transfer_price beforward_price,\n" +
+            "b.create_time    forward_date,\n" +
+            "a.club_id beforward_id,\n" +
+            "f.create_date   beforward_date,\n" +
+            "3 beforward_level,\n" +
+            "date(b.create_time) date ,\n" +
+            "now() create_date \n" +
+            "from  rrz_user_forward a\n" +
+            "inner join  tbl_forward_s b  on a.club_id=b.club_id \n" +
+            "inner join  tbl_cust_2_info c  on  a.club_up_3=c.id\n" +
+            "inner join tbl_cust_info d on  c.cust_id=d.cust_id\n" +
+            "inner join tbl_info  e on a.info_id=e.id\n" +
+            "inner join tbl_cust_2_info f on  a.club_id=f.id                     \n" +
+            "where  a.club_up_3 is not  null   and  b.type=3     and  a.club_id>100\n" +
+            "union all\n" +
+            "select  \n" +
+            "a.club_id forwarded_id,\n" +
+            "d.cust_id cust_id,\n" +
+            "d.cust_nname cust_nname,\n" +
+            "e.id forward_info_id,\n" +
+            "e.info_type forward_info_type,\n" +
+            "e.info_context forward_info_context,\n" +
+            "0 forward_income,\n" +
+            "c.transfer_price forward_price,\n" +
+            "0 beforward_price,\n" +
+            "c.create_date    forward_date,\n" +
+            "0 beforward_id,\n" +
+            "c.create_date   beforward_date,\n" +
+            "0 beforward_level,\n" +
+            "date(c.create_date) date ,\n" +
+            "now() create_date \n" +
+            "from  rrz_user_forward a\n" +
+            "inner join  tbl_cust_2_info c  on  a.club_id=c.id\n" +
+            "inner join tbl_cust_info d on  c.cust_id=d.cust_id\n" +
+            "inner join tbl_info  e on a.info_id=e.id    \n" +
+            "where     a.club_id>100";
 }

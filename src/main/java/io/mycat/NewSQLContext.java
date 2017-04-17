@@ -54,9 +54,13 @@ public class NewSQLContext {
     public static final byte ANNOTATION_SCHEMA = 4;
     public static final byte ANNOTATION_DATANODE = 5;
     public static final byte ANNOTATION_CATLET = 6;
+    public static final byte ANNOTATION_SQL_CACHE = 7;
+    public static final byte ANNOTATION_ACCESS_COUNT = 7;
+    public static final byte ANNOTATION_AUTO_REFRESH = 8;
+    public static final byte ANNOTATION_CACHE_TIME = 9;
 
     private short[] tblResult;  //记录格式：[{schema hash array index(defaults 0), tbl hash array index}]
-    private short[] sqlInfoArray;  //用于记录sql索引，用于支持sql批量提交，格式 [{hash array start pos, sql type, tblResult start pos, tblResult count}]
+    private short[] sqlInfoArray;  //用于记录sql索引，用于支持sql批量提交，格式 [{hash array start pos, sql type(15-5 hash array real sql offset, 4-0 sql type), tblResult start pos, tblResult count}]
     private byte totalTblCount;
     private int tblResultPos;
     private byte schemaCount;
@@ -66,7 +70,7 @@ public class NewSQLContext {
     private byte sqlType;
     private int tblResultArraySize = 256;//todo : 测试期先写死，后期考虑从设置参数中读取
     private byte annotationType;
-    private long annotationValue;
+    private long[] annotationValue;
     private int totalSQLCount;
     private boolean hasLimit = false;
     private int limitStart = 0;
@@ -76,10 +80,12 @@ public class NewSQLContext {
     private int curSQLTblCount = 0;
     private int preHashArrayPos = 0;
     private int preTableResultPos = 0;
+    private int hashArrayRealSQLOffset = 0;//记录真实sql开始偏移
 
     public NewSQLContext() {
         tblResult = new short[tblResultArraySize];
         sqlInfoArray = new short[512];
+        annotationValue = new long[16];
     }
 
     public void setCurBuffer(byte[] curBuffer, HashArray hashArray) {
@@ -90,10 +96,11 @@ public class NewSQLContext {
         tblResultPos = 0;
         schemaResultPos = 2;
         Arrays.fill(tblResult, (short)0);
+        Arrays.fill(sqlInfoArray, (short)0);
         sqlHash = 0;
         sqlType = 0;
         annotationType = 0;
-        annotationValue = 0;
+        Arrays.fill(annotationValue, 0);
         hasLimit = false;
         totalSQLCount = 0;
         limitStart = 0;
@@ -102,6 +109,7 @@ public class NewSQLContext {
         curSQLTblCount = 0;
         preHashArrayPos = 0;
         preTableResultPos = 0;
+        hashArrayRealSQLOffset = 0;
     }
 
     public void setTblName(int hashArrayPos) {
@@ -151,9 +159,9 @@ public class NewSQLContext {
     public String getSQLTableName(int sqlIdx, int tblIdx) {
         //int tblResultIdx = sqlInfoArray[(sqlIdx<<2)+2];
         if (sqlIdx < totalSQLCount) {
-            int sqlInfoOffset = sqlIdx<<2;
-            int tblResultOffset = sqlInfoArray[sqlInfoOffset+2];
-            int tblResultCount = sqlInfoArray[sqlInfoOffset+3];
+            int sqlInfoOffset = (sqlIdx<<2)+3;
+            int tblResultOffset = sqlInfoArray[sqlInfoOffset] >>> 8;
+            int tblResultCount = sqlInfoArray[sqlInfoOffset] & 0xFF;
             if (tblIdx < tblResultCount) {
                 int hashArrayIdx = tblResult[tblResultOffset+(tblIdx<<1)+1];
                 int pos = hashArray.getPos(hashArrayIdx);
@@ -170,15 +178,16 @@ public class NewSQLContext {
 
     public void setSQLFinished(int curHashPos) {
         if (preHashArrayPos < curHashPos-1) {
+            int sqlSize = curHashPos - preHashArrayPos;
             preHashArrayPos = curHashPos;
             totalSQLCount++;
 
             int idx = curSQLIdx<<2;
             curSQLIdx++;
             sqlInfoArray[idx++] = (short)preHashArrayPos;
-            sqlInfoArray[idx++] = sqlType;
-            sqlInfoArray[idx++] = (short)preTableResultPos;
-            sqlInfoArray[idx] = (short)curSQLTblCount;
+            sqlInfoArray[idx++] = (short)((hashArrayRealSQLOffset<<5) | sqlType);
+            sqlInfoArray[idx++] = (short)sqlSize;
+            sqlInfoArray[idx] = (short)((preTableResultPos<<8) | curSQLTblCount);
             curSQLTblCount = 0;
             preTableResultPos = tblResultPos;
             sqlType = 0;
@@ -194,7 +203,7 @@ public class NewSQLContext {
 
     public int getSQLTblCount(int sqlIdx) {
         if (sqlIdx< totalSQLCount) {
-            return sqlInfoArray[(sqlIdx<<2)+3];
+            return sqlInfoArray[(sqlIdx<<2)+3] & 0xFF;
         }
         return 0;
     }
@@ -212,8 +221,25 @@ public class NewSQLContext {
         curSQLIdx = sqlIdx;
     }
 
-    public byte getSQLType() { return (byte)this.sqlInfoArray[1]; }
-    public byte getSQLType(int sqlIdx) { return (byte)this.sqlInfoArray[(sqlIdx<<2)+1]; }
+    public byte getSQLType() { return (byte)(this.sqlInfoArray[1] & 0x1F); }
+    public byte getSQLType(int sqlIdx) { return (byte)(this.sqlInfoArray[(sqlIdx<<2)+1] & 0x1F); }
+
+    public void setRealSQLOffset(int hashArrayPos) {
+        hashArrayRealSQLOffset = hashArrayPos - preHashArrayPos;
+    }
+    public int getRealSQLOffset(int sqlIdx) {
+        int hashArrayOffset = sqlInfoArray[(sqlIdx<<2)+1] >>> 5;
+        return hashArray.getPos(hashArrayOffset);
+    }
+    public int getRealSQLSize(int sqlIdx) {
+        int hashArrayEndPos = sqlInfoArray[(sqlIdx<<2)+2];
+        return hashArray.getPos(hashArrayEndPos)+hashArray.getSize(hashArrayEndPos);
+    }
+    public String getRealSQL(int sqlIdx) {
+        int sqlStartPos = getRealSQLOffset(sqlIdx);
+        int sqlSize =getRealSQLSize(sqlIdx) - sqlStartPos;
+        return new String(buffer, sqlStartPos, sqlSize);
+    }
 
 
     public void setLimit() { hasLimit = true; }
@@ -239,11 +265,11 @@ public class NewSQLContext {
     public void setAnnotationType(byte type) {
         this.annotationType = type;
     }
-    public void setAnnotationValue(long value) { this.annotationValue = value; }
+    public void setAnnotationValue(byte typeKey, long value) { this.annotationValue[typeKey] = value; }
     public void setAnnotationStart(int pos) {}
     public void setAnnotationSize(int size) {}
     public byte getAnnotationType() { return this.annotationType; }
-    public long getAnnotationValue() { return this.annotationValue; }
+    public long getAnnotationValue(byte typeKey) { return this.annotationValue[typeKey]; }
     public String getAnnotationContent() { return null; } //by kaiz : 返回注解等号后面的内容
 
 }

@@ -84,9 +84,12 @@ public class IntTokenHash {
     public static final int HEARTBEAT        = 0xabb70009;
     public static final int PROCEDURE        = 0x11600009;
     public static final int PROCESSOR        = 0xfdbc0009;
+    public static final int CACHE_TIME       = 0x9047000a;
     public static final int CONNECTION       = 0x307d000a;
     public static final int DATASOURCE       = 0x0b35000a;
     public static final int THREADPOOL       = 0x5a7a000a;
+    public static final int ACCESS_COUNT     = 0xec30000c;
+    public static final int AUTO_REFRESH     = 0x06b8000c;
     public static final int LOW_PRIORITY     = 0xb805000c;
     public static final int HIGH_PRIORITY    = 0x7c6f000d;
 }

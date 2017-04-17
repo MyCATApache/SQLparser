@@ -29,7 +29,11 @@ import java.util.stream.IntStream;
  * 1. 部分变量可以替换成常量（是否需要预编译）
  * 2. 使用堆外unsafe数组
  * 3. SQLContext还需要优化成映射到hashArray的模式，也可以考虑只用一个数组，同时存储hashArray、charType、token和解析结果（估计也没人看得懂了）
- *
+ * 2017/3/31
+ * NewSQLContext部分还需要进行如下优化
+ * 1. 支持cache hint 例如 /*!mycat:cache-time=xxx auto-refresh=true access-count=5000...
+ * 2. 支持每一句SQL都有独立的注解
+ * 3. 支持包含注解的语句提取原始sql串
  */
 
 
@@ -240,17 +244,18 @@ public class NewSQLParser {
             hash = hashArray.getHash(pos);
             switch (intHash) {
                 case IntTokenHash.ANNOTATION_END:
-                    return ++pos;
+                    context.setRealSQLOffset(++pos);
+                    return pos;
                 case IntTokenHash.DATANODE:
                     context.setAnnotationType(NewSQLContext.ANNOTATION_DATANODE);
                     if (hashArray.getType(++pos) == Tokenizer.EQUAL) {
-                        context.setAnnotationValue(hashArray.getHash(++pos));
+                        context.setAnnotationValue(NewSQLContext.ANNOTATION_DATANODE, hashArray.getHash(++pos));
                     }
                     break;
                 case IntTokenHash.SCHEMA:
                     context.setAnnotationType(NewSQLContext.ANNOTATION_SCHEMA);
                     if (hashArray.getType(++pos) == Tokenizer.EQUAL) {
-                        context.setAnnotationValue(hashArray.getHash(++pos));
+                        context.setAnnotationValue(NewSQLContext.ANNOTATION_SCHEMA, hashArray.getHash(++pos));
                     }
                     break;
                 case IntTokenHash.SQL:
@@ -268,7 +273,29 @@ public class NewSQLParser {
                 case IntTokenHash.DB_TYPE:
                     context.setAnnotationType(NewSQLContext.ANNOTATION_DB_TYPE);
                     if (hashArray.getType(++pos) == Tokenizer.EQUAL) {
-                        context.setAnnotationValue(hashArray.getHash(++pos));
+                        context.setAnnotationValue(NewSQLContext.ANNOTATION_DB_TYPE, hashArray.getHash(++pos));
+                        ++pos;
+                    }
+                    break;
+                case IntTokenHash.ACCESS_COUNT:
+                    context.setAnnotationType(NewSQLContext.ANNOTATION_SQL_CACHE);
+                    if (hashArray.getType(++pos) == Tokenizer.EQUAL) {
+                        context.setAnnotationValue(NewSQLContext.ANNOTATION_ACCESS_COUNT, pickNumber(++pos));
+                        ++pos;
+                    }
+                    break;
+                case IntTokenHash.AUTO_REFRESH:
+                    context.setAnnotationType(NewSQLContext.ANNOTATION_SQL_CACHE);
+                    if (hashArray.getType(++pos) == Tokenizer.EQUAL) {
+                        context.setAnnotationValue(NewSQLContext.ANNOTATION_AUTO_REFRESH, hashArray.getHash(++pos));
+                        ++pos;
+                    }
+                    break;
+                case IntTokenHash.CACHE_TIME:
+                    context.setAnnotationType(NewSQLContext.ANNOTATION_SQL_CACHE);
+                    if (hashArray.getType(++pos) == Tokenizer.EQUAL) {
+                        context.setAnnotationValue(NewSQLContext.ANNOTATION_CACHE_TIME, pickNumber(++pos));
+                        ++pos;
                     }
                     break;
                 default:
@@ -276,6 +303,12 @@ public class NewSQLParser {
             }
         }
         return pos;
+    }
+
+    int pickSchemaToken(int pos, NewSQLContext context) {
+        context.setTblName(pos);
+        context.pushSchemaName(pos);
+        return ++pos;
     }
     /*
     * 用于进行第一遍处理，处理sql类型以及提取表名
@@ -314,7 +347,7 @@ public class NewSQLParser {
                 case IntTokenHash.USE:
                     if (hashArray.getHash(pos) == TokenHash.USE) {
                         context.setSQLType(NewSQLContext.USE_SQL);
-                        pos++;
+                        pos = pickSchemaToken(++pos, context);
                     }
                     break;
                 case IntTokenHash.DELETE:

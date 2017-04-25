@@ -122,7 +122,7 @@ public class SQLParserTest extends TestCase {
     public void testNormalDelete() throws Exception {
         String sql = "DELETE FROM tbl_A WHERE name='nobody';";
         parser.parse(sql.getBytes(), context);
-        assertEquals(SQLContext.DELETE_SQL, context.getSQLType());
+        assertEquals(NewSQLContext.DELETE_SQL, context.getSQLType());
         assertEquals("tbl_A", context.getTableName(0));
     }
 
@@ -130,7 +130,7 @@ public class SQLParserTest extends TestCase {
     public void testNormalInsert() throws Exception {
         String sql = "INSERT INTO tbl_A (`name`) VALUES ('kaiz');";
         parser.parse(sql.getBytes(), context);
-        assertEquals(SQLContext.INSERT_SQL, context.getSQLType());
+        assertEquals(NewSQLContext.INSERT_SQL, context.getSQLType());
         assertEquals("tbl_A", context.getTableName(0));
     }
 
@@ -138,7 +138,7 @@ public class SQLParserTest extends TestCase {
     public void testNormalInsert2() throws Exception {
         String sql = "INSERT `schema`.`tbl_A` (`name`) VALUES ('kaiz');";
         parser.parse(sql.getBytes(), context);
-        assertEquals(SQLContext.INSERT_SQL, context.getSQLType());
+        assertEquals(NewSQLContext.INSERT_SQL, context.getSQLType());
         assertEquals("tbl_A", context.getTableName(0));
     }
 
@@ -146,7 +146,7 @@ public class SQLParserTest extends TestCase {
     public void testIgnoreInsert() throws Exception {
         String sql = "INSERT IGNORE tbl_A (`name`) VALUES ('kaiz');";
         parser.parse(sql.getBytes(), context);
-        assertEquals(SQLContext.INSERT_SQL, context.getSQLType());
+        assertEquals(NewSQLContext.INSERT_SQL, context.getSQLType());
         assertEquals("tbl_A", context.getTableName(0));
     }
 
@@ -154,7 +154,7 @@ public class SQLParserTest extends TestCase {
     public void testNormalReplace() throws Exception {
         String sql = "Replace into tbl_A (`name`) VALUES ('kaiz');";
         parser.parse(sql.getBytes(), context);
-        assertEquals(SQLContext.REPLACE_SQL, context.getSQLType());
+        assertEquals(NewSQLContext.REPLACE_SQL, context.getSQLType());
         assertEquals("tbl_A", context.getTableName(0));
     }
 
@@ -162,7 +162,7 @@ public class SQLParserTest extends TestCase {
     public void testNormalAlter() throws Exception {
         String sql = "ALTER TABLE tbl_A ADD name VARCHAR(15) NULL;";
         parser.parse(sql.getBytes(), context);
-        assertEquals(SQLContext.ALTER_SQL, context.getSQLType());
+        assertEquals(NewSQLContext.ALTER_SQL, context.getSQLType());
         assertEquals("tbl_A", context.getTableName(0));
     }
 
@@ -170,7 +170,7 @@ public class SQLParserTest extends TestCase {
     public void testDropAlter() throws Exception {
         String sql = "ALTER TABLE tbl_A DROP name VARCHAR(15) NULL;";
         parser.parse(sql.getBytes(), context);
-        assertEquals(SQLContext.ALTER_SQL, context.getSQLType());
+        assertEquals(NewSQLContext.ALTER_SQL, context.getSQLType());
         assertEquals("tbl_A", context.getTableName(0));
     }
 
@@ -178,7 +178,7 @@ public class SQLParserTest extends TestCase {
     public void testNormalDrop() throws Exception {
         String sql = "DROP TABLE IF EXISTS tbl_A;";
         parser.parse(sql.getBytes(), context);
-        assertEquals(SQLContext.DROP_SQL, context.getSQLType());
+        assertEquals(NewSQLContext.DROP_SQL, context.getSQLType());
         assertEquals("tbl_A", context.getTableName(0));
     }
 
@@ -186,7 +186,7 @@ public class SQLParserTest extends TestCase {
     public void testNormalCreate() throws Exception {
         String sql = "CREATE TABLE IF NOT EXISTS tbl_A ( Id INT NOT NULL UNIQUE PRIMARY KEY, name VARCHAR(20) NOT NULL;";
         parser.parse(sql.getBytes(), context);
-        assertEquals(SQLContext.CREATE_SQL, context.getSQLType());
+        assertEquals(NewSQLContext.CREATE_SQL, context.getSQLType());
         assertEquals("tbl_A", context.getTableName(0));
     }
 
@@ -194,7 +194,7 @@ public class SQLParserTest extends TestCase {
     public void testNormalTruncate() throws Exception {
         String sql = "Truncate TABLE IF EXISTS tbl_A;";
         parser.parse(sql.getBytes(), context);
-        assertEquals(SQLContext.TRUNCATE_SQL, context.getSQLType());
+        assertEquals(NewSQLContext.TRUNCATE_SQL, context.getSQLType());
         assertEquals("tbl_A", context.getTableName(0));
     }
 
@@ -319,18 +319,18 @@ public class SQLParserTest extends TestCase {
     public void testAnnotationBalance() throws Exception {
         String sql = "/*balance*/select * from tbl_A where id=1;";
         parser.parse(sql.getBytes(), context);
-        assertEquals(SQLContext.SELECT_SQL, context.getSQLType());
+        assertEquals(NewSQLContext.SELECT_SQL, context.getSQLType());
         assertEquals("tbl_A", context.getTableName(0));
-        assertEquals(SQLContext.ANNOTATION_BALANCE, context.getAnnotationType());
+        assertEquals(NewSQLContext.ANNOTATION_BALANCE, context.getAnnotationType());
     }
 
     @Test
     public void testAnnotationDBType() throws Exception {
         String sql = "/*!MyCAT:DB_Type=Master*/select * from tbl_A where id=1;";
         parser.parse(sql.getBytes(), context);
-        assertEquals(SQLContext.SELECT_SQL, context.getSQLType());
+        assertEquals(NewSQLContext.SELECT_SQL, context.getSQLType());
         assertEquals("tbl_A", context.getTableName(0));
-        assertEquals(SQLContext.ANNOTATION_DB_TYPE, context.getAnnotationType());
+        assertEquals(NewSQLContext.ANNOTATION_DB_TYPE, context.getAnnotationType());
         assertEquals(TokenHash.MASTER, context.getAnnotationValue(SQLContext.ANNOTATION_DB_TYPE));
     }
 
@@ -338,9 +338,9 @@ public class SQLParserTest extends TestCase {
     public void testAnnotationSchema() throws Exception {
         String sql = "/*!MyCAT:schema=testDB*/select * from tbl_A where id=1;";
         parser.parse(sql.getBytes(), context);
-        assertEquals(SQLContext.SELECT_SQL, context.getSQLType());
+        assertEquals(NewSQLContext.SELECT_SQL, context.getSQLType());
         assertEquals("tbl_A", context.getTableName(0));
-        assertEquals(SQLContext.ANNOTATION_SCHEMA, context.getAnnotationType());
+        assertEquals(NewSQLContext.ANNOTATION_SCHEMA, context.getAnnotationType());
         assertEquals(MatchMethodGenerator.genHash("testDB".toCharArray()), context.getAnnotationValue(SQLContext.ANNOTATION_SCHEMA));
     }
 
@@ -348,9 +348,9 @@ public class SQLParserTest extends TestCase {
     public void testAnnotationDataNode() throws Exception {
         String sql = "/*!MyCAT:DataNode=dn1*/select * from tbl_A where id=1;";
         parser.parse(sql.getBytes(), context);
-        assertEquals(SQLContext.SELECT_SQL, context.getSQLType());
+        assertEquals(NewSQLContext.SELECT_SQL, context.getSQLType());
         assertEquals("tbl_A", context.getTableName(0));
-        assertEquals(SQLContext.ANNOTATION_DATANODE, context.getAnnotationType());
+        assertEquals(NewSQLContext.ANNOTATION_DATANODE, context.getAnnotationType());
         assertEquals(MatchMethodGenerator.genHash("dn1".toCharArray()), context.getAnnotationValue(SQLContext.ANNOTATION_DATANODE));
     }
 
@@ -358,9 +358,9 @@ public class SQLParserTest extends TestCase {
     public void testAnnotationCatlet() throws Exception {
         String sql = "/*!MyCAT:catlet=demo.catlets.ShareJoin*/select * from tbl_A where id=1;";
         parser.parse(sql.getBytes(), context);
-        assertEquals(SQLContext.SELECT_SQL, context.getSQLType());
+        assertEquals(NewSQLContext.SELECT_SQL, context.getSQLType());
         assertEquals("tbl_A", context.getTableName(0));
-        assertEquals(SQLContext.ANNOTATION_CATLET, context.getAnnotationType());
+        assertEquals(NewSQLContext.ANNOTATION_CATLET, context.getAnnotationType());
         //TODO 还需要完善提取catlet的类型
     }
 
@@ -435,7 +435,14 @@ public class SQLParserTest extends TestCase {
         assertEquals(1000, context.getAnnotationValue(NewSQLContext.ANNOTATION_CACHE_TIME));
         assertEquals(100, context.getAnnotationValue(NewSQLContext.ANNOTATION_ACCESS_COUNT));
         assertEquals(TokenHash.TRUE, context.getAnnotationValue(NewSQLContext.ANNOTATION_AUTO_REFRESH));
+    }
 
+    @Test
+    public void testLoadDataSQL() throws Exception {
+        String sql = "load data  low_priority infile \"/home/mark/data.sql\" replace into table tbl_A;";
+        parser.parse(sql.getBytes(), context);
+        assertEquals(NewSQLContext.LOAD_SQL, context.getSQLType());
+        assertEquals("tbl_A", context.getTableName(0));
     }
 
     private static final String sql1 = "select t3.*,ztd3.TypeDetailName as UseStateName\n" +

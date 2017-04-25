@@ -17,34 +17,41 @@ public class NewSQLContext {
     public static final byte RENAME_SQL = 6;
     public static final byte USE_SQL = 7;
     public static final byte SHOW_SQL = 8;
-    public static final byte PARTITION_SQL = 9;
+    public static final byte SET_SQL = 9;
+    public static final byte PARTITION_SQL = 10;
 
     //DML
-    public static final byte SELECT_SQL = 10;
-    public static final byte UPDATE_SQL = 11;
-    public static final byte DELETE_SQL = 12;
-    public static final byte INSERT_SQL = 13;
-    public static final byte REPLACE_SQL = 14;
-    public static final byte CALL_SQL = 15;
-    public static final byte EXPLAIN_SQL = 16;
+    public static final byte SELECT_SQL = 11;
+    public static final byte UPDATE_SQL = 12;
+    public static final byte DELETE_SQL = 13;
+    public static final byte INSERT_SQL = 14;
+    public static final byte REPLACE_SQL = 15;
+    public static final byte CALL_SQL = 16;
+    public static final byte EXPLAIN_SQL = 17;
 
-    public static final byte DESCRIBE_SQL = 16;
-    public static final byte HANDLER_SQL = 16;
-    public static final byte LOAD_SQL = 16;
+    public static final byte DESCRIBE_SQL = 18;
+    public static final byte HANDLER_SQL = 19;
+    public static final byte LOAD_SQL = 20;
+    public static final byte HELP_SQL = 21;
 
     //DCL
-    public static final byte GRANT_SQL = 20;
-    public static final byte REVOKE_SQL = 21;
+    public static final byte GRANT_SQL = 22;
+    public static final byte REVOKE_SQL = 23;
+    public static final byte KILL_SQL = 24;
+    public static final byte KILL_QUERY_SQL = 25;
 
     //TCL
-    public static final byte TRANSACTION_SQL = 10;
-    public static final byte SAVEPOINT_SQL = 10;
-    public static final byte ROLLBACK_SQL = 11;
-    public static final byte SET_TRANSACTION_SQL = 12;
-    public static final byte LOCK_SQL = 17;
-    public static final byte XA_SQL = 17;
-    public static final byte SET_AUTOCOMMIT_SQL = 17;
-    public static final byte COMMIT_SQL = 17;
+    public static final byte START_SQL = 26;
+    public static final byte BEGIN_SQL = 27;
+
+    public static final byte TRANSACTION_SQL = 28;
+    public static final byte SAVEPOINT_SQL = 29;
+    public static final byte ROLLBACK_SQL = 30;
+    public static final byte SET_TRANSACTION_SQL = 31;
+    public static final byte LOCK_SQL = 32;
+    public static final byte XA_SQL = 33;
+    public static final byte SET_AUTOCOMMIT_SQL = 34;
+    public static final byte COMMIT_SQL = 35;
 //    public static final byte COMMIT_SQL = 17;
 
     //ANNOTATION TYPE

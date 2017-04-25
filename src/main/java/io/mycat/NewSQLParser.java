@@ -310,6 +310,50 @@ public class NewSQLParser {
         context.pushSchemaName(pos);
         return ++pos;
     }
+
+    int pickLoad(int pos, final int arrayCount, NewSQLContext context) {
+        int intHash;
+        long hash;
+        context.setSQLType(NewSQLContext.LOAD_SQL);
+        ++pos;//skip DATA / XML token
+        while (pos < arrayCount) {
+            intHash = hashArray.getIntHash(pos);
+            hash = hashArray.getHash(pos);
+            switch (intHash) {
+                case IntTokenHash.XML:
+                    pos++;
+                    break;
+                case IntTokenHash.DATA:
+                    pos++;
+                    break;
+                case IntTokenHash.LOW_PRIORITY:
+                    pos++;
+                    break;
+                case IntTokenHash.CONCURRENT:
+                    pos++;
+                    break;
+                case IntTokenHash.LOCAL:
+                    pos++;
+                    break;
+                case IntTokenHash.INFILE:
+                    pos+=2;
+                    break;
+                case IntTokenHash.REPLACE:
+                    pos++;
+                    break;
+                case IntTokenHash.IGNORE:
+                    pos++;
+                    break;
+                case IntTokenHash.INTO:
+                    return pickTableNames(pos+2, arrayCount, context);
+                default:
+                    pos++;
+                    break;
+
+            }
+        }
+        return pos;
+    }
     /*
     * 用于进行第一遍处理，处理sql类型以及提取表名
      */
@@ -406,6 +450,78 @@ public class NewSQLParser {
                 case IntTokenHash.REPLACE:
                     if (hashArray.getHash(pos) == TokenHash.REPLACE) {
                         context.setSQLType(NewSQLContext.REPLACE_SQL);
+                        pos++;
+                    }
+                    break;
+                case IntTokenHash.SET:
+                    if (hashArray.getHash(pos) == TokenHash.SET) {
+                        context.setSQLType(NewSQLContext.SET_SQL);
+                        pos++;
+                    }
+                    break;
+                case IntTokenHash.COMMIT:
+                    if (hashArray.getHash(pos) == TokenHash.COMMIT) {
+                        context.setSQLType(NewSQLContext.COMMIT_SQL);
+                        pos++;
+                    }
+                    break;
+                case IntTokenHash.START:
+                    if (hashArray.getHash(pos) == TokenHash.START) {
+                        context.setSQLType(NewSQLContext.START_SQL);
+                        pos++;
+                    }
+                    break;
+                case IntTokenHash.BEGIN:
+                    if (hashArray.getHash(pos) == TokenHash.BEGIN) {
+                        context.setSQLType(NewSQLContext.BEGIN_SQL);
+                        pos++;
+                    }
+                    break;
+                case IntTokenHash.SAVEPOINT:
+                    if (hashArray.getHash(pos) == TokenHash.SAVEPOINT) {
+                        context.setSQLType(NewSQLContext.SAVEPOINT_SQL);
+                        pos++;
+                    }
+                    break;
+                case IntTokenHash.KILL:
+                    if (hashArray.getHash(pos) == TokenHash.KILL) {
+
+                        if (hashArray.getIntHash(++pos)==IntTokenHash.QUERY && hashArray.getHash(pos)==TokenHash.QUERY){
+                            context.setSQLType(NewSQLContext.KILL_QUERY_SQL);
+                        } else
+                            context.setSQLType(NewSQLContext.KILL_SQL);
+                        pos++;
+                    }
+                    break;
+                case IntTokenHash.CALL:
+                    if (hashArray.getHash(pos) == TokenHash.CALL) {
+                        context.setSQLType(NewSQLContext.CALL_SQL);
+                        pos++;
+                    }
+                    break;
+                case IntTokenHash.DESC:
+                case IntTokenHash.DESCRIBE:
+                    long hashValue;
+                    if (((hashValue = hashArray.getHash(pos)) == TokenHash.DESC) ||
+                            hashValue == TokenHash.DESCRIBE) {
+                        context.setSQLType(NewSQLContext.DESCRIBE_SQL);
+                        pos++;
+                    }
+                    break;
+                case IntTokenHash.LOAD:
+                    if (hashArray.getHash(pos) == TokenHash.LOAD) {
+                        pos = pickLoad(++pos, arrayCount, context);
+                    }
+                    break;
+                case IntTokenHash.HELP:
+                    if (hashArray.getHash(pos) == TokenHash.HELP) {
+                        context.setSQLType(NewSQLContext.HELP_SQL);
+                        pos++;
+                    }
+                    break;
+                case IntTokenHash.ROLLBACK:
+                    if (hashArray.getHash(pos) == TokenHash.ROLLBACK) {
+                        context.setSQLType(NewSQLContext.ROLLBACK_SQL);
                         pos++;
                     }
                     break;

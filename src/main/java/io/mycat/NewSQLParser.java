@@ -163,7 +163,7 @@ public class NewSQLParser {
                 context.setLimitStart(pickNumber(++pos));
             }
         }
-        return ++pos;
+        return pos;
     }
 
     int pickInsert(int pos, final int arrayCount, NewSQLContext context) {
@@ -533,7 +533,7 @@ public class NewSQLParser {
                     pos = pickAnnotation(++pos, arrayCount, context);
                     break;
                 case IntTokenHash.SQL_DELIMETER:
-                    context.setSQLFinished(pos++);
+                    context.setSQLFinished(++pos);
                     break;
                 default:
                     pos++;

@@ -186,7 +186,7 @@ public class NewSQLContext {
     public void setSQLFinished(int curHashPos) {
         if (preHashArrayPos < curHashPos-1) {
             int sqlSize = curHashPos - preHashArrayPos;
-            preHashArrayPos = curHashPos;
+
             totalSQLCount++;
 
             int idx = curSQLIdx<<2;
@@ -197,6 +197,7 @@ public class NewSQLContext {
             sqlInfoArray[idx] = (short)((preTableResultPos<<8) | curSQLTblCount);
             curSQLTblCount = 0;
             preTableResultPos = tblResultPos;
+            preHashArrayPos = curHashPos;
             sqlType = 0;
         } else {
             //all sql has been parsed
@@ -239,7 +240,7 @@ public class NewSQLContext {
         return hashArray.getPos(hashArrayOffset);
     }
     public int getRealSQLSize(int sqlIdx) {
-        int hashArrayEndPos = sqlInfoArray[(sqlIdx<<2)+2];
+        int hashArrayEndPos = sqlInfoArray[(sqlIdx<<2)+2]-1;
         return hashArray.getPos(hashArrayEndPos)+hashArray.getSize(hashArrayEndPos);
     }
     public String getRealSQL(int sqlIdx) {

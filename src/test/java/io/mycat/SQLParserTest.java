@@ -445,6 +445,22 @@ public class SQLParserTest extends TestCase {
         assertEquals("tbl_A", context.getTableName(0));
     }
 
+    @Test
+    public void testSelectGlobalVarSQL() throws Exception {
+        String sql = "select @@version limit 1;";
+        parser.parse(sql.getBytes(), context);
+        assertEquals(NewSQLContext.SELECT_SQL, context.getSQLType());
+        assertEquals(sql, context.getRealSQL(0));
+    }
+
+    @Test
+    public void testShowDatabasesSQL() throws Exception {
+        String sql = "show databases";
+        parser.parse(sql.getBytes(), context);
+        assertEquals(NewSQLContext.SHOW_SQL, context.getSQLType());
+        assertEquals(sql, context.getRealSQL(0));
+    }
+
     private static final String sql1 = "select t3.*,ztd3.TypeDetailName as UseStateName\n" +
             "from\n" +
             "( \n" +

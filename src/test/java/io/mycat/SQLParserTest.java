@@ -461,6 +461,31 @@ public class SQLParserTest extends TestCase {
         assertEquals(sql, context.getRealSQL(0));
     }
 
+    @Test
+    public void testShowVariables() throws Exception {
+        String sql = "show variables like 'profiling'";
+        parser.parse(sql.getBytes(), context);
+        assertEquals(NewSQLContext.SHOW_SQL, context.getSQLType());
+        assertEquals(sql, context.getRealSQL(0));
+    }
+
+    @Test
+    public void testSelectIntoSQL() throws Exception {
+        String sql = "select * into tbl_B from tbl_A;";
+        parser.parse(sql.getBytes(), context);
+        assertEquals(NewSQLContext.SELECT_INTO_SQL, context.getSQLType());
+        assertEquals("tbl_B", context.getTableName(0));
+        assertEquals("tbl_A", context.getTableName(1));
+    }
+
+    @Test
+    public void testSelectForUpdateSQL() throws Exception {
+        String sql = "select * from tbl_A for update;";
+        parser.parse(sql.getBytes(), context);
+        assertEquals(NewSQLContext.SELECT_FOR_UPDATE_SQL, context.getSQLType());
+        assertEquals("tbl_A", context.getTableName(0));
+    }
+
     private static final String sql1 = "select t3.*,ztd3.TypeDetailName as UseStateName\n" +
             "from\n" +
             "( \n" +

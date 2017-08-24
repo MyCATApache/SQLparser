@@ -98,6 +98,7 @@ public class Tokenizer {
             if (c == '\\') {
                 pos+=2;
             } else if (c == startSign ) {
+                size++;
                 break;
             } else {
                 size++;

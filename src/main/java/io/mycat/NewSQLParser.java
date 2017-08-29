@@ -1,5 +1,8 @@
 package io.mycat;
 
+import io.mycat.SQLParseUtils.HashArray;
+import io.mycat.SQLParseUtils.Tokenizer;
+
 import java.nio.charset.StandardCharsets;
 import java.util.stream.IntStream;
 
@@ -26,272 +29,18 @@ import java.util.stream.IntStream;
  * 1. 部分变量可以替换成常量（是否需要预编译）
  * 2. 使用堆外unsafe数组
  * 3. SQLContext还需要优化成映射到hashArray的模式，也可以考虑只用一个数组，同时存储hashArray、charType、token和解析结果（估计也没人看得懂了）
- *
+ * 2017/3/31
+ * NewSQLContext部分还需要进行如下优化
+ * 1. 支持cache hint 例如 /*!mycat:cache-time=xxx auto-refresh=true access-count=5000...
+ * 2. 支持每一句SQL都有独立的注解
+ * 3. 支持包含注解的语句提取原始sql串
  */
 
 
 public class NewSQLParser {
-    SQLContext context;
-    SQLReader reader;
-
-    class HashArray {
-        long[] hashArray = new long[4096];
-        int pos = 0;
-
-        void init() {
-            while(pos>=0) {
-                hashArray[pos--] = 0;
-            }
-            pos = 0;
-        }
-        void set(int type, int start, int size) { hashArray[pos++] = (long)type << 32 | size << 16 | start; pos++; }
-        void set(int type, int start, int size, long hash) { hashArray[pos++] = (long)type << 32 | size << 16 | start; hashArray[pos++] = hash; }
-        int getPos(int idx) { return (((int)hashArray[idx<<1]) & 0xFFFF); }
-        int getSize(int idx) { return (((int)hashArray[idx<<1]&0xFFFF0000) >>> 16); }
-        int getType(int idx) { return (int)((hashArray[idx<<1]&0xFFFFFFFF00000000L)>>>32); }
-        void setType(int idx, int type) { hashArray[idx<<1] = (hashArray[idx<<1] & 0xFFFFFFFFL) | ((long)type << 32); }
-        long getHash(int idx) { return hashArray[(idx<<1)+1]; }
-        int getIntHash(int idx) {
-            long value = hashArray[idx << 1];
-            return (int)(value >>> 16);
-        }
-        int getCount() {return pos>>1;}
-    }
-
-    private final int DIGITS = 1;
-    private final int CHARS = 2;
-    private final int STRINGS = 3;
-    private final int MINUS = 4;
-    private final int SHARP = 5;
-    private final int DIVISION = 6;
-    private final byte AT = 7;
-    private final byte COMMA = 8;
-    private final byte BACK_SLASH = 9;
-    private final byte LEFT_PARENTHESES = 10;
-    private final byte RIGHT_PARENTHESES = 11;
-    private final byte SEMICOLON = 12;
-    private final byte STAR = 13;
-    private final byte EQUAL = 14;
-    private final byte PLUS = 15;
-    private final byte LESS = 16;
-    private final byte GREATER = 17;
-    private final byte DOT = 18;
-    private final byte COMMENTS = 19;
-    private final byte ANNOTATION_BALANCE = 20;
-    private final byte ANNOTATION_START = 21;
-    private final byte ANNOTATION_END = 22;
-
     byte[] sql;
-    final byte[] charType = new byte[512];
     HashArray hashArray = new HashArray();
-
-    void init() {
-        //// TODO: 2017/2/21 可能需要调整顺序进行优化
-        IntStream.rangeClosed('0', '9').forEach(c -> charType[c<<1] = DIGITS);
-        IntStream.rangeClosed('A', 'Z').forEach(c -> charType[c<<1] = CHARS);
-        IntStream.rangeClosed('a', 'z').forEach(c -> charType[c<<1] = CHARS);
-        charType['_'<<1] = CHARS;
-        charType['$'<<1] = CHARS;
-        charType['.'<<1] = DOT;
-        charType[','<<1] = COMMA;
-        //字符串
-        charType['"'<<1] = STRINGS;
-        charType['\''<<1] = STRINGS;
-        charType['\\'<<1] = BACK_SLASH;
-        //sql分隔
-        charType['('<<1] = LEFT_PARENTHESES;
-        charType[')'<<1] = RIGHT_PARENTHESES;
-        charType[';'<<1] = SEMICOLON;
-        //（可能的）注释和运算符
-        charType['-'<<1] = MINUS;
-        charType['/'<<1] = DIVISION;
-        charType['#'<<1] = SHARP;
-        charType['*'<<1] = STAR;
-        charType['='<<1] = EQUAL;
-        charType['+'<<1] = PLUS;
-        charType['<'<<1] = LESS;
-        charType['>'<<1] = GREATER;
-        charType['@'<<1] = AT;
-
-        charType[('$'<<1)+1] = 1;
-        IntStream.rangeClosed('0', '9').forEach(c -> charType[(c<<1)+1] = (byte)(c-'0'+2));
-        IntStream.rangeClosed('A', 'Z').forEach(c -> charType[(c<<1)+1] = (byte)(c-'A'+12));
-        IntStream.rangeClosed('a', 'z').forEach(c -> charType[(c<<1)+1] = (byte)(c-'a'+12));
-        charType[('_'<<1)+1] = 38;
-
-    }
-
-    int parseToken(byte[] sql, int pos, final int sqlLength, byte c) {
-        int cType;
-        int start = pos;
-        int size = 1;
-        long hash = c = charType[(c<<1)+1];
-        int type = 1315423911;
-        type ^= (type<<5) + c + (type>>2);
-        while (++pos < sqlLength && (((cType = charType[(c = sql[pos])<<1]) == 2) || cType == 1) ) {
-            cType = charType[(c<<1)+1];
-            hash = (hash*41)+cType;//别问我为什么是41
-            type ^= (type<<5) + cType + (type>>2);
-            size++;
-        }
-        hashArray.set(type, start, size, hash);
-        return pos;
-    }
-
-    int parseString(byte[] sql, int pos, final int sqlLength, int startSign) {
-        int size = 1;
-        int start = pos;
-        int c;
-        while (++pos < sqlLength ) {
-            c = sql[pos];
-            if (c == '\\') {
-                pos+=2;
-            } else if (c == startSign ) {
-                break;
-            } else {
-                size++;
-            }
-        }
-        hashArray.set(STRINGS, start, size, 0L);
-        return ++pos;
-    }
-
-    int parseDigits(byte[] sql, int pos, final int sqlLength) {
-        int start = pos;
-        int size = 1;
-        while (++pos<sqlLength && charType[sql[pos]<<1] == DIGITS) {
-            size++;
-        }
-        hashArray.set(DIGITS, start, size);
-        return pos;
-    }
-
-    int parseAnnotation(byte[] sql, int pos, final int sqlLength) {
-        hashArray.set(ANNOTATION_START, pos-2, 2);
-        //byte cur = sql[pos];
-        //byte next = sql[++pos];
-        byte c;
-        byte cType;
-        while (pos < sqlLength) {
-            c = sql[pos];
-            cType = charType[c<<1];
-            switch (cType) {
-                case DIGITS:
-                    pos = parseDigits(sql, pos, sqlLength);
-                    break;
-                case CHARS:
-                    pos = parseToken(sql, pos, sqlLength, c);
-                    break;
-                case STAR:
-                    if (sql[++pos] == '/') {
-                        hashArray.set(ANNOTATION_END, pos-1, 2);
-                        return ++pos;
-                    } else {
-                        hashArray.set(cType, pos-1, 1);
-                    }
-                    break;
-                case EQUAL:
-                    hashArray.set(cType,pos,1);
-                default:
-                    pos++;
-                    break;
-            }
-        }
-        return pos;
-    }
-
-    int skipSingleLineComment(byte[] sql, int pos, final int sqlLength) {
-        while (++pos < sqlLength && sql[pos]!='\n');
-        return pos;
-    }
-
-    int skipMultiLineComment(byte[] sql, int pos, final int sqlLength, byte pre) {
-        //int start = pos-2;
-        //int size=2;
-        byte cur = sql[pos];
-        while (pos < sqlLength) {
-            if (pre == '*' && cur == '/' ) {
-                return ++pos;
-            }
-            pos++;
-            pre = cur;
-            cur = sql[pos];
-        }
-        //hashArray.set(COMMENTS, start, size);
-        return pos;
-    }
-
-    void tokenize(byte[] sql) {
-        int pos = 0;
-        final int sqlLength = sql.length;
-        this.sql = sql;
-        hashArray.init();
-        byte c;
-        byte cType;
-        byte next;
-        while (pos < sqlLength) {
-            c = sql[pos];
-            cType = charType[c<<1];
-
-            switch (cType) {
-                case 0:
-                    pos++;
-                    break;
-                case CHARS:
-                    pos = parseToken(sql, pos, sqlLength, c);
-                    break;
-                case DIGITS:
-                    pos = parseDigits(sql, pos, sqlLength);
-                    break;
-                case STRINGS:
-                    pos = parseString(sql, pos, sqlLength, c);
-                    break;
-                case MINUS:
-                    if (sql[++pos]!='-') {
-                        hashArray.set(MINUS, pos-1, 1);
-                    } else {
-                        pos = skipSingleLineComment(sql, pos, sqlLength);
-                    }
-                    break;
-                case SHARP:
-                    pos = skipSingleLineComment(sql, pos, sqlLength);
-                    break;
-                case DIVISION:
-                    next = sql[++pos];
-                    if (next == '*') {
-                        next = sql[++pos];
-                        if (next == '!'||next == '#') {
-                            //处理mycat注解
-                            if ((sql[++pos]&0xDF) == 'M' && (sql[++pos]&0xDF) == 'Y' &&(sql[++pos]&0xDF) == 'C' &&(sql[++pos]&0xDF) == 'A' &&(sql[++pos]&0xDF) == 'T'
-                                    && sql[++pos] == ':') {
-                                pos = parseAnnotation(sql, pos, sqlLength);
-                            } else {
-                                pos = skipMultiLineComment(sql, ++pos, sqlLength, next);
-                            }
-                        } else if ((next&0xDF) == 'B' && (sql[++pos]&0xDF) == 'A' && (sql[++pos]&0xDF) == 'L' && (sql[++pos]&0xDF) == 'A'
-                                && (sql[++pos]&0xDF) == 'N' && (sql[++pos]&0xDF) == 'C' && (sql[++pos]&0xDF) == 'E'
-                                && sql[++pos] == '*' && sql[++pos] == '/' ) { //还有 /*balance*/ 注解
-                            hashArray.set(ANNOTATION_BALANCE, pos-1, 1);
-                            hashArray.set(ANNOTATION_END, pos, 1);
-                            pos++;
-                        } else
-                            pos = skipMultiLineComment(sql, ++pos, sqlLength, next);
-                    } else if (next == '/') {
-                        pos = skipSingleLineComment(sql, pos, sqlLength);
-                    } else {
-                        hashArray.set(charType[next<<1], pos++, 1);
-                    }
-                    break;
-                case AT:
-                    next = sql[++pos];
-                    if (next == '@') {
-                        //parse system infomation
-                    }
-                default:
-                    hashArray.set(cType, pos++, 1);
-            }
-        }
-    }
+    Tokenizer tokenizer = new Tokenizer(hashArray);
 
     boolean isAlias(int pos, int type) { //需要优化成数组判断
         switch (type) {
@@ -345,34 +94,38 @@ public class NewSQLParser {
                     return false;
                 else
                     return true;
+            case IntTokenHash.FROM:
+                if (hashArray.getHash(pos) == TokenHash.FROM)
+                    return false;
+                else
+                    return true;
             default:
                 return true;
         }
     }
 
-    int pickTableNames(int pos, final int arrayCount, SQLContext context) {
+    int pickTableNames(int pos, final int arrayCount, NewSQLContext context) {
         int type;
         long hash = hashArray.getHash(pos);
         if (hash != 0) {
-            context.setTblNameStart(hashArray.getPos(pos));// TODO: 2017/3/10 可以优化成一个接口
-            context.setTblNameSize(hashArray.getSize(pos));
+            context.setTblName(pos);
+            //context.setTblNameStart(hashArray.getPos(pos));// TODO: 2017/3/10 可以优化成一个接口
+            //context.setTblNameSize(hashArray.getSize(pos));
             pos++;
             while (pos < arrayCount) {
                 type = hashArray.getType(pos);
-                if (type == DOT) {
+                if (type == Tokenizer.DOT) {
                     ++pos;
-                    context.pushSchemaName();
-                    context.setTblNameStart(hashArray.getPos(pos));// TODO: 2017/3/10 可以优化成一个接口
-                    context.setTblNameSize(hashArray.getSize(pos));
+                    context.pushSchemaName(pos);
+                    //context.setTblNameStart(hashArray.getPos(pos));// TODO: 2017/3/10 可以优化成一个接口
+                    //context.setTblNameSize(hashArray.getSize(pos));
                     ++pos;
-                } else if (type == SEMICOLON || type == RIGHT_PARENTHESES) {
+                } else if (type == Tokenizer.SEMICOLON || type == Tokenizer.RIGHT_PARENTHESES || type == Tokenizer.LEFT_PARENTHESES) {
                     return ++pos;
-                } else if (type == COMMA) {
+                } else if (type == Tokenizer.COMMA) {
                     return pickTableNames(++pos, arrayCount, context);
                 } else if ((type = hashArray.getIntHash(pos)) == IntTokenHash.AS) {
                     pos += 2;// TODO: 2017/3/10  二阶段解析需要别名，需要把别名存储下来
-                } else if (type == COMMENTS) {
-                    pos++;
                 } else if (isAlias(pos, type)) {
                     pos++;// TODO: 2017/3/10  二阶段解析需要别名，需要把别名存储下来
                 } else
@@ -394,19 +147,19 @@ public class NewSQLParser {
         return value;
     }
 
-    int pickLimits(int pos, final int arrayCount, SQLContext context) {
+    int pickLimits(int pos, final int arrayCount, NewSQLContext context) {
         int minus = 1;
-        if (hashArray.getType(pos) == DIGITS) {
+        if (hashArray.getType(pos) == Tokenizer.DIGITS) {
             context.setLimit();
             context.setLimitCount(pickNumber(pos));
-            if (++pos < arrayCount && hashArray.getType(pos) == COMMA) {
+            if (++pos < arrayCount && hashArray.getType(pos) == Tokenizer.COMMA) {
                 context.pushLimitStart();
                 if (++pos < arrayCount) {
-                    if (hashArray.getType(pos) == MINUS) {
+                    if (hashArray.getType(pos) == Tokenizer.MINUS) {
                         minus = -1;
                         ++pos;
                     }
-                    if (hashArray.getType(pos) == DIGITS) {
+                    if (hashArray.getType(pos) == Tokenizer.DIGITS) {
                         //// TODO: 2017/3/11 需要完善处理数字部分逻辑
                         context.setLimitCount(pickNumber(pos)*minus);
                     }
@@ -415,10 +168,10 @@ public class NewSQLParser {
                 context.setLimitStart(pickNumber(++pos));
             }
         }
-        return ++pos;
+        return pos;
     }
 
-    int pickInsert(int pos, final int arrayCount, SQLContext context) {
+    int pickInsert(int pos, final int arrayCount, NewSQLContext context) {
         int intHash;
         long hash;
         while (pos < arrayCount) {
@@ -446,7 +199,7 @@ public class NewSQLParser {
         return pos;
     }
 
-    int pickTableToken(int pos, final int arrayCount, SQLContext context) {
+    int pickTableToken(int pos, final int arrayCount, NewSQLContext context) {
         int intHash;
         long hash;
         while (pos < arrayCount) {
@@ -468,7 +221,7 @@ public class NewSQLParser {
         return pos;
     }
 
-    int pickUpdate(int pos, final int arrayCount, SQLContext context) {
+    int pickUpdate(int pos, final int arrayCount, NewSQLContext context) {
         int intHash;
         long hash;
         while (pos < arrayCount) {
@@ -488,7 +241,7 @@ public class NewSQLParser {
         return pos;
     }
 
-    int pickAnnotation(int pos, final int arrayCount, SQLContext context) {
+    int pickAnnotation(int pos, final int arrayCount, NewSQLContext context) {
         int intHash;
         long hash;
         while (pos < arrayCount) {
@@ -496,35 +249,58 @@ public class NewSQLParser {
             hash = hashArray.getHash(pos);
             switch (intHash) {
                 case IntTokenHash.ANNOTATION_END:
-                    return ++pos;
+                    context.setRealSQLOffset(++pos);
+                    return pos;
                 case IntTokenHash.DATANODE:
-                    context.setAnnotationType(SQLContext.ANNOTATION_DATANODE);
-                    if (hashArray.getType(++pos) == EQUAL) {
-                        context.setAnnotationValue(hashArray.getHash(++pos));
+                    context.setAnnotationType(NewSQLContext.ANNOTATION_DATANODE);
+                    if (hashArray.getType(++pos) == Tokenizer.EQUAL) {
+                        context.setAnnotationValue(NewSQLContext.ANNOTATION_DATANODE, hashArray.getHash(++pos));
                     }
                     break;
                 case IntTokenHash.SCHEMA:
-                    context.setAnnotationType(SQLContext.ANNOTATION_SCHEMA);
-                    if (hashArray.getType(++pos) == EQUAL) {
-                        context.setAnnotationValue(hashArray.getHash(++pos));
+                    context.setAnnotationType(NewSQLContext.ANNOTATION_SCHEMA);
+                    if (hashArray.getType(++pos) == Tokenizer.EQUAL) {
+                        context.setAnnotationValue(NewSQLContext.ANNOTATION_SCHEMA, hashArray.getHash(++pos));
                     }
                     break;
                 case IntTokenHash.SQL:
-                    context.setAnnotationType(SQLContext.ANNOTATION_SQL);
-                    if (hashArray.getType(++pos) == EQUAL) {
+                    context.setAnnotationType(NewSQLContext.ANNOTATION_SQL);
+                    if (hashArray.getType(++pos) == Tokenizer.EQUAL) {
 
                     }
                     break;
                 case IntTokenHash.CATLET:
-                    context.setAnnotationType(SQLContext.ANNOTATION_CATLET);
-                    if (hashArray.getType(++pos) == EQUAL) {
+                    context.setAnnotationType(NewSQLContext.ANNOTATION_CATLET);
+                    if (hashArray.getType(++pos) == Tokenizer.EQUAL) {
 
                     }
                     break;
                 case IntTokenHash.DB_TYPE:
-                    context.setAnnotationType(SQLContext.ANNOTATION_DB_TYPE);
-                    if (hashArray.getType(++pos) == EQUAL) {
-                        context.setAnnotationValue(hashArray.getHash(++pos));
+                    context.setAnnotationType(NewSQLContext.ANNOTATION_DB_TYPE);
+                    if (hashArray.getType(++pos) == Tokenizer.EQUAL) {
+                        context.setAnnotationValue(NewSQLContext.ANNOTATION_DB_TYPE, hashArray.getHash(++pos));
+                        ++pos;
+                    }
+                    break;
+                case IntTokenHash.ACCESS_COUNT:
+                    context.setAnnotationType(NewSQLContext.ANNOTATION_SQL_CACHE);
+                    if (hashArray.getType(++pos) == Tokenizer.EQUAL) {
+                        context.setAnnotationValue(NewSQLContext.ANNOTATION_ACCESS_COUNT, pickNumber(++pos));
+                        ++pos;
+                    }
+                    break;
+                case IntTokenHash.AUTO_REFRESH:
+                    context.setAnnotationType(NewSQLContext.ANNOTATION_SQL_CACHE);
+                    if (hashArray.getType(++pos) == Tokenizer.EQUAL) {
+                        context.setAnnotationValue(NewSQLContext.ANNOTATION_AUTO_REFRESH, hashArray.getHash(++pos));
+                        ++pos;
+                    }
+                    break;
+                case IntTokenHash.CACHE_TIME:
+                    context.setAnnotationType(NewSQLContext.ANNOTATION_SQL_CACHE);
+                    if (hashArray.getType(++pos) == Tokenizer.EQUAL) {
+                        context.setAnnotationValue(NewSQLContext.ANNOTATION_CACHE_TIME, pickNumber(++pos));
+                        ++pos;
                     }
                     break;
                 default:
@@ -533,10 +309,60 @@ public class NewSQLParser {
         }
         return pos;
     }
+
+    int pickSchemaToken(int pos, NewSQLContext context) {
+        context.setTblName(pos);
+        context.pushSchemaName(pos);
+        return ++pos;
+    }
+
+    int pickLoad(int pos, final int arrayCount, NewSQLContext context) {
+        int intHash;
+        long hash;
+        context.setSQLType(NewSQLContext.LOAD_SQL);
+        ++pos;//skip DATA / XML token
+        while (pos < arrayCount) {
+            intHash = hashArray.getIntHash(pos);
+            hash = hashArray.getHash(pos);
+            switch (intHash) {
+                case IntTokenHash.XML:
+                    pos++;
+                    break;
+                case IntTokenHash.DATA:
+                    pos++;
+                    break;
+                case IntTokenHash.LOW_PRIORITY:
+                    pos++;
+                    break;
+                case IntTokenHash.CONCURRENT:
+                    pos++;
+                    break;
+                case IntTokenHash.LOCAL:
+                    pos++;
+                    break;
+                case IntTokenHash.INFILE:
+                    pos+=2;
+                    break;
+                case IntTokenHash.REPLACE:
+                    pos++;
+                    break;
+                case IntTokenHash.IGNORE:
+                    pos++;
+                    break;
+                case IntTokenHash.INTO:
+                    return pickTableNames(pos+2, arrayCount, context);
+                default:
+                    pos++;
+                    break;
+
+            }
+        }
+        return pos;
+    }
     /*
     * 用于进行第一遍处理，处理sql类型以及提取表名
      */
-    public void firstParse(SQLContext context) {
+    public void firstParse(NewSQLContext context) {
         final int arrayCount = hashArray.getCount();
         int pos = 0;
         while(pos<arrayCount) {
@@ -547,6 +373,10 @@ public class NewSQLParser {
                     }
                     break;
                 case IntTokenHash.INTO:
+                    byte type = context.getSQLType();
+                    if (context.getCurSQLType() == NewSQLContext.SELECT_SQL) {
+                        context.setSQLType(NewSQLContext.SELECT_INTO_SQL);
+                    }
                     if (hashArray.getHash(pos) == TokenHash.INTO) {
                         pos = pickTableNames(++pos, arrayCount, context);
                     }
@@ -563,43 +393,43 @@ public class NewSQLParser {
                     break;
                 case IntTokenHash.UPDATE:
                     if (hashArray.getHash(pos) == TokenHash.UPDATE) {
-                        context.setSQLType(SQLContext.UPDATE_SQL);
+                        context.setSQLType(NewSQLContext.UPDATE_SQL);
                         pos = pickUpdate(++pos, arrayCount, context);
                     }
                     break;
                 case IntTokenHash.USE:
                     if (hashArray.getHash(pos) == TokenHash.USE) {
-                        context.setSQLType(SQLContext.USE_SQL);
-                        pos++;
+                        context.setSQLType(NewSQLContext.USE_SQL);
+                        pos = pickSchemaToken(++pos, context);
                     }
                     break;
                 case IntTokenHash.DELETE:
                     if (hashArray.getHash(pos) == TokenHash.DELETE) {
-                        context.setSQLType(SQLContext.DELETE_SQL);
+                        context.setSQLType(NewSQLContext.DELETE_SQL);
                         pos++;
                     }
                     break;
                 case IntTokenHash.DROP:
                     if (hashArray.getHash(pos) == TokenHash.DROP) {
-                        context.setSQLType(SQLContext.DROP_SQL);
+                        context.setSQLType(NewSQLContext.DROP_SQL);
                         pos++;
                     }
                     break;
                 case IntTokenHash.SELECT:
                     if (hashArray.getHash(pos) == TokenHash.SELECT) {
-                        context.setSQLType(SQLContext.SELECT_SQL);
+                        context.setSQLType(NewSQLContext.SELECT_SQL);
                         pos++;
                     }
                     break;
                 case IntTokenHash.SHOW:
                     if (hashArray.getHash(pos) == TokenHash.SHOW) {
-                        context.setSQLType(SQLContext.SHOW_SQL);
+                        context.setSQLType(NewSQLContext.SHOW_SQL);
                         pos++;
                     }
                     break;
                 case IntTokenHash.INSERT:
                     if (hashArray.getHash(pos) == TokenHash.INSERT) {
-                        context.setSQLType(SQLContext.INSERT_SQL);
+                        context.setSQLType(NewSQLContext.INSERT_SQL);
                         pos = pickInsert(++pos, arrayCount, context);
                     }
                     break;
@@ -610,41 +440,123 @@ public class NewSQLParser {
                     break;
                 case IntTokenHash.TRUNCATE:
                     if (hashArray.getHash(pos) == TokenHash.TRUNCATE) {
-                        context.setSQLType(SQLContext.TRUNCATE_SQL);
+                        context.setSQLType(NewSQLContext.TRUNCATE_SQL);
                         pos++;
                     }
                     break;
                 case IntTokenHash.ALTER:
                     if (hashArray.getHash(pos) == TokenHash.ALTER) {
-                        context.setSQLType(SQLContext.ALTER_SQL);
+                        context.setSQLType(NewSQLContext.ALTER_SQL);
                         pos++;
                     }
                     break;
                 case IntTokenHash.CREATE:
                     if (hashArray.getHash(pos) == TokenHash.CREATE) {
-                        context.setSQLType(SQLContext.CREATE_SQL);
+                        context.setSQLType(NewSQLContext.CREATE_SQL);
                         pos++;
                     }
                     break;
                 case IntTokenHash.REPLACE:
                     if (hashArray.getHash(pos) == TokenHash.REPLACE) {
-                        context.setSQLType(SQLContext.REPLACE_SQL);
+                        context.setSQLType(NewSQLContext.REPLACE_SQL);
+                        pos++;
+                    }
+                    break;
+                case IntTokenHash.SET:
+                    if (hashArray.getHash(pos) == TokenHash.SET) {
+                        context.setSQLType(NewSQLContext.SET_SQL);
+                        pos++;
+                    }
+                    break;
+                case IntTokenHash.COMMIT:
+                    if (hashArray.getHash(pos) == TokenHash.COMMIT) {
+                        context.setSQLType(NewSQLContext.COMMIT_SQL);
+                        pos++;
+                    }
+                    break;
+                case IntTokenHash.START:
+                    if (hashArray.getHash(pos) == TokenHash.START) {
+                        context.setSQLType(NewSQLContext.START_SQL);
+                        pos++;
+                    }
+                    break;
+                case IntTokenHash.BEGIN:
+                    if (hashArray.getHash(pos) == TokenHash.BEGIN) {
+                        context.setSQLType(NewSQLContext.BEGIN_SQL);
+                        pos++;
+                    }
+                    break;
+                case IntTokenHash.SAVEPOINT:
+                    if (hashArray.getHash(pos) == TokenHash.SAVEPOINT) {
+                        context.setSQLType(NewSQLContext.SAVEPOINT_SQL);
+                        pos++;
+                    }
+                    break;
+                case IntTokenHash.KILL:
+                    if (hashArray.getHash(pos) == TokenHash.KILL) {
+
+                        if (hashArray.getIntHash(++pos)==IntTokenHash.QUERY && hashArray.getHash(pos)==TokenHash.QUERY){
+                            context.setSQLType(NewSQLContext.KILL_QUERY_SQL);
+                        } else
+                            context.setSQLType(NewSQLContext.KILL_SQL);
+                        pos++;
+                    }
+                    break;
+                case IntTokenHash.CALL:
+                    if (hashArray.getHash(pos) == TokenHash.CALL) {
+                        context.setSQLType(NewSQLContext.CALL_SQL);
+                        pos++;
+                    }
+                    break;
+                case IntTokenHash.DESC:
+                case IntTokenHash.DESCRIBE:
+                    long hashValue;
+                    if (((hashValue = hashArray.getHash(pos)) == TokenHash.DESC) ||
+                            hashValue == TokenHash.DESCRIBE) {
+                        context.setSQLType(NewSQLContext.DESCRIBE_SQL);
+                        pos++;
+                    }
+                    break;
+                case IntTokenHash.LOAD:
+                    if (hashArray.getHash(pos) == TokenHash.LOAD) {
+                        pos = pickLoad(++pos, arrayCount, context);
+                    }
+                    break;
+                case IntTokenHash.HELP:
+                    if (hashArray.getHash(pos) == TokenHash.HELP) {
+                        context.setSQLType(NewSQLContext.HELP_SQL);
+                        pos++;
+                    }
+                    break;
+                case IntTokenHash.ROLLBACK:
+                    if (hashArray.getHash(pos) == TokenHash.ROLLBACK) {
+                        context.setSQLType(NewSQLContext.ROLLBACK_SQL);
                         pos++;
                     }
                     break;
                 case IntTokenHash.ANNOTATION_BALANCE:
-                    context.setAnnotationType(SQLContext.ANNOTATION_BALANCE);
+                    context.setAnnotationType(NewSQLContext.ANNOTATION_BALANCE);
                     pos++;
                     break;
                 case IntTokenHash.ANNOTATION_START:
                     pos = pickAnnotation(++pos, arrayCount, context);
                     break;
+                case IntTokenHash.SQL_DELIMETER:
+                    context.setSQLFinished(++pos);
+                    break;
+                case IntTokenHash.FOR:
+                    int next = pos+1;
+                    if (context.getCurSQLType() == NewSQLContext.SELECT_SQL) {
+                        if (hashArray.getIntHash(next) == IntTokenHash.UPDATE && hashArray.getHash(next) == TokenHash.UPDATE) {
+                            context.setSQLType(NewSQLContext.SELECT_FOR_UPDATE_SQL);
+                        }
+                    }
                 default:
                     pos++;
                     break;
             }
         }
-
+        context.setSQLFinished(pos);//为了确保最后一个没有分号的sql也能正确处理
     }
 
     /*
@@ -654,25 +566,26 @@ public class NewSQLParser {
 
     }
 
-    public void parse(byte[] src, SQLContext context) {
-        context.setCurBuffer(src);
-        tokenize(src);
+    public void parse(byte[] src, NewSQLContext context) {
+        sql = src;
+        context.setCurBuffer(src, hashArray);
+        tokenizer.tokenize(src);
         firstParse(context);
     }
 
-    static long RunBench(byte[] src, NewSQLParser parser) {
-        int count = 0;
-        long start = System.currentTimeMillis();
-        do {
-            parser.tokenize(src);
-        } while (count++ < 10_000_000);
-        return System.currentTimeMillis() - start;
-    }
+//    static long RunBench(byte[] src, NewSQLParser parser) {
+//        int count = 0;
+//        long start = System.currentTimeMillis();
+//        do {
+//            parser.tokenize(src);
+//        } while (count++ < 10_000_000);
+//        return System.currentTimeMillis() - start;
+//    }
 
     public static void main(String[] args) {
         NewSQLParser parser = new NewSQLParser();
-        SQLContext context = new SQLContext();
-        parser.init();
+        NewSQLContext context = new NewSQLContext();
+        //parser.init();
 //        byte[] src = "SELECT a FROM ab             , ee.ff AS f,(SELECT a FROM `schema_bb`.`tbl_bb`,(SELECT a FROM ccc AS c, `dddd`));".getBytes(StandardCharsets.UTF_8);//20个token
 //        byte[] src = "INSERT `schema`.`tbl_A` (`name`) VALUES ('kaiz');".getBytes(StandardCharsets.UTF_8);
 //        byte[] src = ("select * from tbl_A, -- 单行注释\n" +
@@ -683,9 +596,9 @@ public class NewSQLParser {
 //        byte[] src = sql3.getBytes(StandardCharsets.UTF_8);
 //        byte[] src = "SELECT * FROM table LIMIT 95,-1".getBytes(StandardCharsets.UTF_8);
 //        byte[] src = "/*balance*/select * from tbl_A where id=1;".getBytes(StandardCharsets.UTF_8);
-        byte[] src = "/*!MyCAT:DB_Type=Master*/select * from tbl_A where id=1;".getBytes(StandardCharsets.UTF_8);
-
-
+//        byte[] src = "/*!MyCAT:DB_Type=Master*/select * from tbl_A where id=1;".getBytes(StandardCharsets.UTF_8);
+//        byte[] src = "insert tbl_A(id, val) values(1, 2);\ninsert tbl_B(id, val) values(2, 2);\nSELECT id, val FROM tbl_S where id=19;\n".getBytes(StandardCharsets.UTF_8);
+        byte[] src = "select * into tbl_B from tbl_A;".getBytes();
 //        long min = 0;
 //        for (int i = 0; i < 50; i++) {
 //            System.out.print("Loop " + i + " : ");
@@ -697,6 +610,7 @@ public class NewSQLParser {
 //        }
 //        System.out.print("min time : " + min);
         parser.parse(src, context);
+        System.out.println(context.getSQLCount());
         IntStream.range(0, context.getTableCount()).forEach(i -> System.out.println(context.getSchemaName(i) + '.' + context.getTableName(i)));
         //System.out.print("token count : "+parser.hashArray.getCount());
     }

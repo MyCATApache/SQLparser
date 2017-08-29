@@ -1,9 +1,9 @@
 package io.mycat;
 
 
-import com.alibaba.druid.sql.SQLUtils;
-import com.alibaba.druid.sql.ast.SQLStatement;
-import com.alibaba.druid.sql.dialect.mysql.visitor.MySqlSchemaStatVisitor;
+//import com.alibaba.druid.sql.SQLUtils;
+//import com.alibaba.druid.sql.ast.SQLStatement;
+//import com.alibaba.druid.sql.dialect.mysql.visitor.MySqlSchemaStatVisitor;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.runner.Runner;
 import org.openjdk.jmh.runner.RunnerException;
@@ -25,6 +25,7 @@ public class SQLBenchmark {
     SQLParser parser;
     SQLContext context;
     NewSQLParser newSQLParser;
+    NewSQLContext newSQLContext;
     NewUnsafeSQLParser unsafeSQLParser;
     byte[] srcBytes;
     String src;
@@ -46,14 +47,15 @@ public class SQLBenchmark {
         parser = new SQLParser();
         context = new SQLContext();
         newSQLParser = new NewSQLParser();
-        newSQLParser.init();
+        newSQLContext = new NewSQLContext();
+        //newSQLParser.init();
 //        unsafeSQLParser = new NewUnsafeSQLParser();
 //        unsafeSQLParser.init();
         System.out.println("=> init");
     }
 
     @Benchmark
-    public void NewSqQLParserTest() { newSQLParser.parse(srcBytes, context);}
+    public void NewSqQLParserTest() { newSQLParser.parse(srcBytes, newSQLContext);}
 
 //    @Benchmark
 //    public void UnsafeSqQLParserTest() { unsafeSQLParser.tokenize(srcBytes);}
@@ -68,20 +70,20 @@ public class SQLBenchmark {
 //        List<SQLStatement> stmtList = SQLUtils.parseStatements(src, "mysql");
 //    }
 
-    public void DruidParse() {
-        List<SQLStatement> stmtList = SQLUtils.parseStatements(src, "mysql");
-        //解析出的独立语句的个数
-        System.out.println("size is:" + stmtList.size());
-        for (int i = 0; i < stmtList.size(); i++) {
-            SQLStatement stmt = stmtList.get(i);
-            MySqlSchemaStatVisitor visitor = new MySqlSchemaStatVisitor();
-            stmt.accept(visitor);
-            //获取表名称
-            System.out.println("Tables : " + visitor.getCurrentTable());
-            //获取操作方法名称,依赖于表名称
-            System.out.println("Manipulation : " + visitor.getTables());
-            //获取字段名称
-            System.out.println("fields : " + visitor.getColumns());
-        }
-    }
+//    public void DruidParse() {
+//        List<SQLStatement> stmtList = SQLUtils.parseStatements(src, "mysql");
+//        //解析出的独立语句的个数
+//        System.out.println("size is:" + stmtList.size());
+//        for (int i = 0; i < stmtList.size(); i++) {
+//            SQLStatement stmt = stmtList.get(i);
+//            MySqlSchemaStatVisitor visitor = new MySqlSchemaStatVisitor();
+//            stmt.accept(visitor);
+//            //获取表名称
+//            System.out.println("Tables : " + visitor.getCurrentTable());
+//            //获取操作方法名称,依赖于表名称
+//            System.out.println("Manipulation : " + visitor.getTables());
+//            //获取字段名称
+//            System.out.println("fields : " + visitor.getColumns());
+//        }
+//    }
 }

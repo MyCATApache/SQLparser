@@ -1,4 +1,4 @@
-package io.mycat;
+package io.mycat.mycat2.sqlparser;
 
 import java.nio.ByteBuffer;
 import java.util.Arrays;

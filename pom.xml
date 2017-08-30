@@ -11,7 +11,7 @@
     <artifactId>SQLParser</artifactId>
     <version>1.4-SNAPSHOT</version>
     <properties>
-        <jmh.version>1.17.4</jmh.version>
+        <jmh.version>1.19</jmh.version>
         <junit.version>4.12</junit.version>
     </properties>
     <build>

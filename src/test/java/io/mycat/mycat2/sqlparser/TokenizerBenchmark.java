@@ -1,17 +1,15 @@
-package io.mycat;
+package io.mycat.mycat2.sqlparser;
 
-import io.mycat.SQLParseUtils.HashArray;
-import io.mycat.SQLParseUtils.Tokenizer;
-//import io.mycat.SQLParseUtils.UnsafeHashArray;
-//import io.mycat.SQLParseUtils.UnsafeTokenizer;
-import org.junit.Ignore;
+import io.mycat.mycat2.sqlparser.SQLParseUtils.HashArray;
+import io.mycat.mycat2.sqlparser.SQLParseUtils.Tokenizer;
+//import io.mycat.mycat2.sqlparser.SQLParseUtils.UnsafeHashArray;
+//import io.mycat.mycat2.sqlparser.SQLParseUtils.UnsafeTokenizer;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.runner.Runner;
 import org.openjdk.jmh.runner.RunnerException;
 import org.openjdk.jmh.runner.options.Options;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
 
-import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 
 @BenchmarkMode(Mode.Throughput)//基准测试类型

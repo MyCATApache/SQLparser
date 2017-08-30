@@ -1,4 +1,4 @@
-package io.mycat;
+package io.mycat.mycat2.sqlparser;
 
 import java.nio.charset.StandardCharsets;
 

@@ -1,4 +1,4 @@
-package io.mycat;
+package io.mycat.mycat2.sqlparser;
 
 //import com.alibaba.druid.sql.parser.Token;
 import javafx.util.Pair;

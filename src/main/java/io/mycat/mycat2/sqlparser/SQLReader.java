@@ -1,4 +1,4 @@
-package io.mycat;
+package io.mycat.mycat2.sqlparser;
 
 /**
  * Created by Kaiz on 2017/2/6.

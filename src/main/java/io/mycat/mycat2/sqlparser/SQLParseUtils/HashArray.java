@@ -1,4 +1,4 @@
-package io.mycat.SQLParseUtils;
+package io.mycat.mycat2.sqlparser.SQLParseUtils;
 
 /**
  * Created by Fanfan on 2017/3/21.

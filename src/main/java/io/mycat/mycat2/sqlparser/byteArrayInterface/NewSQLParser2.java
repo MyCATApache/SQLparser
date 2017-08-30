@@ -4,8 +4,14 @@ import io.mycat.mycat2.sqlparser.IntTokenHash;
 import io.mycat.mycat2.sqlparser.SQLParseUtils.HashArray;
 import io.mycat.mycat2.sqlparser.SQLParseUtils.Tokenizer;
 import io.mycat.mycat2.sqlparser.TokenHash;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.util.function.Supplier;
 import java.util.stream.IntStream;
+
+import static io.mycat.mycat2.sqlparser.byteArrayInterface.Tokenizer2.COMMA;
+import static io.mycat.mycat2.sqlparser.byteArrayInterface.Tokenizer2.SEMICOLON;
 
 /**
  * Created by Kaiz on 2017/2/6.
@@ -43,6 +49,19 @@ public class NewSQLParser2 {
     HashArray hashArray = new HashArray();
     Tokenizer2 tokenizer = new Tokenizer2(hashArray);
     DefaultByteArray defaultByteArray = new DefaultByteArray();
+    private static final Logger LOGGER = LoggerFactory.getLogger(NewSQLParser2.class);
+
+    private static void debug(Supplier<String> template, Supplier<String> msg) {
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug(template.get(), msg.get());
+        }
+    }
+
+    private static void debug(Supplier<String> msg) {
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug(msg.get());
+        }
+    }
 
     boolean isAlias(int pos, int type) { //需要优化成数组判断
         switch (type) {
@@ -144,7 +163,9 @@ public class NewSQLParser2 {
         int start = hashArray.getPos(pos);
         int end = start + hashArray.getSize(pos);
         for (int i = start; i < end; i++) {
-            value = (value * 10) + (sql.get(i) - '0');
+            int l=sql.get(i);
+            int r=( l-'0');
+            value = (value * 10) + (r);
         }
         return value;
     }
@@ -318,6 +339,72 @@ public class NewSQLParser2 {
         return ++pos;
     }
 
+    /**
+     * @param pos        pos已经指向 commit 或者rollback 的后一个字符
+     * @param arrayCount
+     * @param context
+     * @return
+     */
+    int pickCommitRollback(int pos, final int arrayCount, NewSQLContext2 context) {
+        if (hashArray.getHash(pos) == TokenHash.WORK) {
+            ++pos;
+            debug(() -> "WORK");
+        }
+        if (hashArray.getHash(pos) == TokenHash.AND) {
+            debug(() -> "AND");
+            ++pos;
+            //todo 逻辑优化
+            if (hashArray.getHash(pos) == TokenHash.NO) {
+                ++pos;
+                debug(() -> "NO");
+                if (hashArray.getHash(pos) == TokenHash.CHAIN) {
+                    ++pos;
+                    debug(() -> "CHAIN");
+                    //todo  .setChain(Boolean.FALSE);
+                }
+            } else {
+                if (hashArray.getHash(pos) == TokenHash.CHAIN) {
+                    debug(() -> "CHAIN");
+                    ++pos;
+                    //todo  .setChain(Boolean.TRUE);
+                }
+            }
+        }
+        //todo 逻辑优化
+        if (hashArray.getHash(pos) == TokenHash.NO) {
+            ++pos;
+            debug(() -> "NO");
+            if (hashArray.getHash(pos) == TokenHash.RELEASE) {
+                debug(() -> "RELEASE");
+                ++pos;
+            }
+        } else if (hashArray.getHash(pos) == TokenHash.RELEASE) {
+            debug(() -> "RELEASE");
+            ++pos;
+        }
+        return pos;
+
+    }
+   int  pickSetAutocommit(int pos, final int arrayCount, NewSQLContext2 context){
+           pos++;
+           debug(() -> "AUTOCOMMIT");
+           if (hashArray.getType(pos) == Tokenizer2.EQUAL) {
+               debug(() -> "=");
+               pos++;
+               if (hashArray.getType(pos) == Tokenizer2.DIGITS) {
+                   int n = pickNumber(pos);
+                   if (n == 1) {
+                       debug(() -> "1");
+                   } else {
+                       debug(() -> "0");
+                   }
+                   //todo 设置
+                   pos++;
+               }
+           }
+       return pos;
+   }
+
     int pickLoad(int pos, final int arrayCount, NewSQLContext2 context) {
         int intHash;
         long hash;
@@ -361,6 +448,45 @@ public class NewSQLParser2 {
         }
         return pos;
     }
+   int pickStartTransaction(int pos,final int arrayCount, NewSQLContext2 context){
+       pos++;
+       debug(() -> "TRANSACTION");
+       //todo testStartTransaction
+       while (pos < arrayCount) {
+           if (hashArray.getHash(pos) == TokenHash.WITH) {
+               pos++;
+               debug(() -> "WITH");
+               if (hashArray.getHash(pos) == TokenHash.CONSISTENT) {
+                   pos++;
+                   debug(() -> "CONSISTENT");
+                   if (hashArray.getHash(pos) == TokenHash.SNAPSHOT) {
+                       pos++;
+                       debug(() -> "SNAPSHOT");
+                       //todo  testStartTransactionWithConsistentSnapshot
+                   }
+               }
+           } else if (hashArray.getHash(pos) == TokenHash.READ) {
+               pos++;
+               debug(() -> "READ");
+               long hash;
+               if ((hash = hashArray.getHash(pos)) == TokenHash.ONLY) {
+                   debug(() -> "ONLY");
+                   pos++;
+               } else if (hash == TokenHash.WRITE) {
+                   debug(() -> "WRITE");
+                   pos++;
+               }
+           }
+           if (hashArray.getType(pos) == COMMA) {
+               debug(() -> "COMMA");
+               ++pos;
+               continue;
+           } else {
+               break;
+           }
+       }
+       return pos;
+   }
 
     /*
     * 用于进行第一遍处理，处理sql类型以及提取表名
@@ -468,25 +594,41 @@ public class NewSQLParser2 {
                 case IntTokenHash.SET:
                     if (hashArray.getHash(pos) == TokenHash.SET) {
                         context.setSQLType(NewSQLContext2.SET_SQL);
+                        debug(() -> "SET");
                         pos++;
+                        if (hashArray.getHash(pos) == TokenHash.AUTOCOMMIT) {
+                            pos = pickSetAutocommit(pos, arrayCount, context);
+                        }
                     }
                     break;
                 case IntTokenHash.COMMIT:
                     if (hashArray.getHash(pos) == TokenHash.COMMIT) {
                         context.setSQLType(NewSQLContext2.COMMIT_SQL);
                         pos++;
+                        debug(() -> "COMMIT");
+                      pos=  pickCommitRollback(pos, arrayCount, context);
                     }
                     break;
                 case IntTokenHash.START:
                     if (hashArray.getHash(pos) == TokenHash.START) {
                         context.setSQLType(NewSQLContext2.START_SQL);
                         pos++;
+                        debug(() -> "START");
+                        if (hashArray.getHash(pos) == TokenHash.TRANSACTION) {
+                         pos=pickStartTransaction(pos,arrayCount,context);
+                        }
                     }
                     break;
                 case IntTokenHash.BEGIN:
                     if (hashArray.getHash(pos) == TokenHash.BEGIN) {
                         context.setSQLType(NewSQLContext2.BEGIN_SQL);
                         pos++;
+                        debug(() -> "BEGIN");
+                        if (hashArray.getHash(pos) == TokenHash.WORK) {
+                            debug(() -> "WORK");
+                            //todo WORK
+                            pos++;
+                        }
                     }
                     break;
                 case IntTokenHash.SAVEPOINT:
@@ -535,6 +677,8 @@ public class NewSQLParser2 {
                     if (hashArray.getHash(pos) == TokenHash.ROLLBACK) {
                         context.setSQLType(NewSQLContext2.ROLLBACK_SQL);
                         pos++;
+                        debug(() -> "ROLLBACK");
+                        pos=  pickCommitRollback(pos, arrayCount, context);
                     }
                     break;
                 case IntTokenHash.ANNOTATION_BALANCE:

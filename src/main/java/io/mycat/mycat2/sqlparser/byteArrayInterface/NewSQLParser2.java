@@ -7,6 +7,10 @@ import io.mycat.mycat2.sqlparser.TokenHash;
 
 import java.util.stream.IntStream;
 
+import static io.mycat.mycat2.sqlparser.IntTokenHash.LOW_PRIORITY;
+import static io.mycat.mycat2.sqlparser.TokenHash.*;
+import static io.mycat.mycat2.sqlparser.byteArrayInterface.TokenizerUtil.debug;
+
 /**
  * Created by Kaiz on 2017/2/6.
  * <p>
@@ -44,68 +48,6 @@ public class NewSQLParser2 {
     Tokenizer2 tokenizer = new Tokenizer2(hashArray);
     DefaultByteArray defaultByteArray = new DefaultByteArray();
 
-    boolean isAlias(int pos, int type) { //需要优化成数组判断
-        switch (type) {
-            case IntTokenHash.WHERE:
-                if (hashArray.getHash(pos) == TokenHash.WHERE)
-                    return false;
-                else
-                    return true;
-            case IntTokenHash.GROUP:
-                if (hashArray.getHash(pos) == TokenHash.GROUP)
-                    return false;
-                else
-                    return true;
-            case IntTokenHash.ORDER:
-                if (hashArray.getHash(pos) == TokenHash.ORDER)
-                    return false;
-                else
-                    return true;
-            case IntTokenHash.LIMIT:
-                if (hashArray.getHash(pos) == TokenHash.LIMIT)
-                    return false;
-                else
-                    return true;
-            case IntTokenHash.JOIN:
-                if (hashArray.getHash(pos) == TokenHash.JOIN)
-                    return false;
-                else
-                    return true;
-            case IntTokenHash.LEFT:
-                if (hashArray.getHash(pos) == TokenHash.LEFT)
-                    return false;
-                else
-                    return true;
-            case IntTokenHash.RIGHT:
-                if (hashArray.getHash(pos) == TokenHash.RIGHT)
-                    return false;
-                else
-                    return true;
-            case IntTokenHash.FOR:
-                if (hashArray.getHash(pos) == TokenHash.FOR)
-                    return false;
-                else
-                    return true;
-            case IntTokenHash.LOCK:
-                if (hashArray.getHash(pos) == TokenHash.LOCK)
-                    return false;
-                else
-                    return true;
-            case IntTokenHash.ON:
-                if (hashArray.getHash(pos) == TokenHash.ON)
-                    return false;
-                else
-                    return true;
-            case IntTokenHash.FROM:
-                if (hashArray.getHash(pos) == TokenHash.FROM)
-                    return false;
-                else
-                    return true;
-            default:
-                return true;
-        }
-    }
-
     int pickTableNames(int pos, final int arrayCount, NewSQLContext2 context) {
         int type;
         long hash = hashArray.getHash(pos);
@@ -128,7 +70,7 @@ public class NewSQLParser2 {
                     return pickTableNames(++pos, arrayCount, context);
                 } else if ((type = hashArray.getIntHash(pos)) == IntTokenHash.AS) {
                     pos += 2;// TODO: 2017/3/10  二阶段解析需要别名，需要把别名存储下来
-                } else if (isAlias(pos, type)) {
+                } else if (TokenizerUtil.isAlias(pos, type, hashArray)) {
                     pos++;// TODO: 2017/3/10  二阶段解析需要别名，需要把别名存储下来
                 } else
                     return pos;
@@ -139,21 +81,12 @@ public class NewSQLParser2 {
         }
     }
 
-    int pickNumber(int pos) {
-        int value = 0;
-        int start = hashArray.getPos(pos);
-        int end = start + hashArray.getSize(pos);
-        for (int i = start; i < end; i++) {
-            value = (value * 10) + (sql.get(i) - '0');
-        }
-        return value;
-    }
 
     int pickLimits(int pos, final int arrayCount, NewSQLContext2 context) {
         int minus = 1;
         if (hashArray.getType(pos) == Tokenizer.DIGITS) {
             context.setLimit();
-            context.setLimitCount(pickNumber(pos));
+            context.setLimitCount(TokenizerUtil.pickNumber(pos, hashArray, sql));
             if (++pos < arrayCount && hashArray.getType(pos) == Tokenizer.COMMA) {
                 context.pushLimitStart();
                 if (++pos < arrayCount) {
@@ -163,11 +96,11 @@ public class NewSQLParser2 {
                     }
                     if (hashArray.getType(pos) == Tokenizer.DIGITS) {
                         //// TODO: 2017/3/11 需要完善处理数字部分逻辑
-                        context.setLimitCount(pickNumber(pos) * minus);
+                        context.setLimitCount(TokenizerUtil.pickNumber(pos, hashArray, sql) * minus);
                     }
                 }
             } else if (hashArray.getHash(pos) == TokenHash.OFFSET) {
-                context.setLimitStart(pickNumber(++pos));
+                context.setLimitStart(TokenizerUtil.pickNumber(++pos, hashArray, sql));
             }
         }
         return pos;
@@ -184,7 +117,7 @@ public class NewSQLParser2 {
             } else if (intHash == IntTokenHash.DELAYED && hash == TokenHash.DELAYED) {
                 pos++;
                 continue;
-            } else if (intHash == IntTokenHash.LOW_PRIORITY && hash == TokenHash.LOW_PRIORITY) {
+            } else if (intHash == LOW_PRIORITY && hash == TokenHash.LOW_PRIORITY) {
                 pos++;
                 continue;
             } else if (intHash == IntTokenHash.HIGH_PRIORITY && hash == TokenHash.HIGH_PRIORITY) {
@@ -229,7 +162,7 @@ public class NewSQLParser2 {
         while (pos < arrayCount) {
             intHash = hashArray.getIntHash(pos);
             hash = hashArray.getHash(pos);
-            if (intHash == IntTokenHash.LOW_PRIORITY && hash == TokenHash.LOW_PRIORITY) {
+            if (intHash == LOW_PRIORITY && hash == TokenHash.LOW_PRIORITY) {
                 pos++;
                 continue;
             } else if (intHash == IntTokenHash.IGNORE && hash == TokenHash.IGNORE) {
@@ -287,7 +220,7 @@ public class NewSQLParser2 {
                 case IntTokenHash.ACCESS_COUNT:
                     context.setAnnotationType(NewSQLContext2.ANNOTATION_SQL_CACHE);
                     if (hashArray.getType(++pos) == Tokenizer.EQUAL) {
-                        context.setAnnotationValue(NewSQLContext2.ANNOTATION_ACCESS_COUNT, pickNumber(++pos));
+                        context.setAnnotationValue(NewSQLContext2.ANNOTATION_ACCESS_COUNT, TokenizerUtil.pickNumber(++pos, hashArray, sql));
                         ++pos;
                     }
                     break;
@@ -301,7 +234,7 @@ public class NewSQLParser2 {
                 case IntTokenHash.CACHE_TIME:
                     context.setAnnotationType(NewSQLContext2.ANNOTATION_SQL_CACHE);
                     if (hashArray.getType(++pos) == Tokenizer.EQUAL) {
-                        context.setAnnotationValue(NewSQLContext2.ANNOTATION_CACHE_TIME, pickNumber(++pos));
+                        context.setAnnotationValue(NewSQLContext2.ANNOTATION_CACHE_TIME, TokenizerUtil.pickNumber(++pos, hashArray, sql));
                         ++pos;
                     }
                     break;
@@ -318,6 +251,7 @@ public class NewSQLParser2 {
         return ++pos;
     }
 
+
     int pickLoad(int pos, final int arrayCount, NewSQLContext2 context) {
         int intHash;
         long hash;
@@ -333,7 +267,7 @@ public class NewSQLParser2 {
                 case IntTokenHash.DATA:
                     pos++;
                     break;
-                case IntTokenHash.LOW_PRIORITY:
+                case LOW_PRIORITY:
                     pos++;
                     break;
                 case IntTokenHash.CONCURRENT:
@@ -375,7 +309,7 @@ public class NewSQLParser2 {
                         pos = pickTableNames(++pos, arrayCount, context);
                     }
                     break;
-                case IntTokenHash.INTO:
+                case IntTokenHash.INTO: {
                     byte type = context.getSQLType();
                     if (context.getCurSQLType() == NewSQLContext2.SELECT_SQL) {
                         context.setSQLType(NewSQLContext2.SELECT_INTO_SQL);
@@ -384,6 +318,7 @@ public class NewSQLParser2 {
                         pos = pickTableNames(++pos, arrayCount, context);
                     }
                     break;
+                }
                 case IntTokenHash.TABLE:
                     if (hashArray.getHash(pos) == TokenHash.TABLE) {
                         pos = pickTableToken(++pos, arrayCount, context);
@@ -467,31 +402,46 @@ public class NewSQLParser2 {
                     break;
                 case IntTokenHash.SET:
                     if (hashArray.getHash(pos) == TokenHash.SET) {
-                        context.setSQLType(NewSQLContext2.SET_SQL);
-                        pos++;
+                        pos = TCLSQLParser.pickSetAutocommitAndSetTransaction(pos, arrayCount, context, hashArray, sql);
                     }
                     break;
                 case IntTokenHash.COMMIT:
                     if (hashArray.getHash(pos) == TokenHash.COMMIT) {
                         context.setSQLType(NewSQLContext2.COMMIT_SQL);
                         pos++;
+                        TokenizerUtil.debug(() -> "COMMIT");
+                        pos = TCLSQLParser.pickCommitRollback(pos, arrayCount, context, hashArray);
                     }
                     break;
                 case IntTokenHash.START:
                     if (hashArray.getHash(pos) == TokenHash.START) {
                         context.setSQLType(NewSQLContext2.START_SQL);
                         pos++;
+                        TokenizerUtil.debug(() -> "START");
+                        if (hashArray.getHash(pos) == TRANSACTION) {
+                            pos = TCLSQLParser.pickStartTransaction(pos, arrayCount, context, hashArray);
+                        }
                     }
                     break;
                 case IntTokenHash.BEGIN:
                     if (hashArray.getHash(pos) == TokenHash.BEGIN) {
                         context.setSQLType(NewSQLContext2.BEGIN_SQL);
                         pos++;
+                        TokenizerUtil.debug(() -> "BEGIN");
+                        if (hashArray.getHash(pos) == TokenHash.WORK) {
+                            TokenizerUtil.debug(() -> "WORK");
+                            //todo WORK
+                            pos++;
+                        }
                     }
                     break;
                 case IntTokenHash.SAVEPOINT:
+                    debug(pos,context);
                     if (hashArray.getHash(pos) == TokenHash.SAVEPOINT) {
                         context.setSQLType(NewSQLContext2.SAVEPOINT_SQL);
+                        pos++;
+                        //todo 记录    SAVEPOINT identifier
+                        TokenizerUtil.debug(pos, tokenizer, hashArray);
                         pos++;
                     }
                     break;
@@ -535,6 +485,8 @@ public class NewSQLParser2 {
                     if (hashArray.getHash(pos) == TokenHash.ROLLBACK) {
                         context.setSQLType(NewSQLContext2.ROLLBACK_SQL);
                         pos++;
+                        TokenizerUtil.debug(() -> "ROLLBACK");
+                        pos = TCLSQLParser.pickCommitRollback(pos, arrayCount, context, hashArray);
                     }
                     break;
                 case IntTokenHash.ANNOTATION_BALANCE:
@@ -554,7 +506,40 @@ public class NewSQLParser2 {
                             context.setSQLType(NewSQLContext2.SELECT_FOR_UPDATE_SQL);
                         }
                     }
+                case IntTokenHash.RELEASE: {
+                    TokenizerUtil.debug(pos, context);
+                    ++pos;
+                    if (hashArray.getHash(pos) == TokenHash.SAVEPOINT) {
+                        TokenizerUtil.debug(pos, context);
+                        ++pos;
+                        //todo 记录 RELEASE SAVEPOINT identifier
+                        TokenizerUtil.debug(pos, context);
+                        ++pos;
+                    }
+                    break;
+                }
+                case IntTokenHash.LOCK: {
+                    debug(pos, context);
+                    ++pos;
+                    if (hashArray.getHash(pos) == TokenHash.TABLES) {
+                        pos = TCLSQLParser.pickLockTables(pos, arrayCount, context, hashArray);
+                    }
+                    break;
+                }
+                case IntTokenHash.UNLOCK: {
+                    ++pos;
+                    if (hashArray.getHash(pos) == TokenHash.TABLES) {
+                        //todo 记录SQL_TYPE
+                        ++pos;
+                    }
+                    break;
+                }
+                case IntTokenHash.XA: {
+                    pos = TCLSQLParser.pickXATransaction(pos, arrayCount, context, hashArray);
+                    break;
+                }
                 default:
+                //    System.out.println(hashArray.getIntHash(pos));
                     pos++;
                     break;
             }

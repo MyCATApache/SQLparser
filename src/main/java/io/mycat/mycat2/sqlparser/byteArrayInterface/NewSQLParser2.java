@@ -7,8 +7,6 @@ import io.mycat.mycat2.sqlparser.TokenHash;
 
 import java.util.stream.IntStream;
 
-import static io.mycat.mycat2.sqlparser.IntTokenHash.LOW_PRIORITY;
-import static io.mycat.mycat2.sqlparser.TokenHash.*;
 import static io.mycat.mycat2.sqlparser.byteArrayInterface.TokenizerUtil.debug;
 
 /**
@@ -116,8 +114,7 @@ public class NewSQLParser2 {
                 return pickTableNames(++pos, arrayCount, context);
             } else if (intHash == IntTokenHash.DELAYED && hash == TokenHash.DELAYED) {
                 pos++;
-                continue;
-            } else if (intHash == LOW_PRIORITY && hash == TokenHash.LOW_PRIORITY) {
+            } else if (intHash == IntTokenHash.LOW_PRIORITY && hash == TokenHash.LOW_PRIORITY) {
                 pos++;
                 continue;
             } else if (intHash == IntTokenHash.HIGH_PRIORITY && hash == TokenHash.HIGH_PRIORITY) {
@@ -162,7 +159,7 @@ public class NewSQLParser2 {
         while (pos < arrayCount) {
             intHash = hashArray.getIntHash(pos);
             hash = hashArray.getHash(pos);
-            if (intHash == LOW_PRIORITY && hash == TokenHash.LOW_PRIORITY) {
+            if (intHash ==IntTokenHash. LOW_PRIORITY && hash == TokenHash.LOW_PRIORITY) {
                 pos++;
                 continue;
             } else if (intHash == IntTokenHash.IGNORE && hash == TokenHash.IGNORE) {
@@ -267,7 +264,7 @@ public class NewSQLParser2 {
                 case IntTokenHash.DATA:
                     pos++;
                     break;
-                case LOW_PRIORITY:
+                case IntTokenHash.LOW_PRIORITY:
                     pos++;
                     break;
                 case IntTokenHash.CONCURRENT:
@@ -418,7 +415,7 @@ public class NewSQLParser2 {
                         context.setSQLType(NewSQLContext2.START_SQL);
                         pos++;
                         TokenizerUtil.debug(() -> "START");
-                        if (hashArray.getHash(pos) == TRANSACTION) {
+                        if (hashArray.getHash(pos) == TokenHash.TRANSACTION) {
                             pos = TCLSQLParser.pickStartTransaction(pos, arrayCount, context, hashArray);
                         }
                     }

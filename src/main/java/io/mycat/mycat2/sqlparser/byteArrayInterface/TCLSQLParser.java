@@ -7,12 +7,6 @@ import io.mycat.mycat2.sqlparser.TokenHash;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.function.Supplier;
-
-import static io.mycat.mycat2.sqlparser.IntTokenHash.LOW_PRIORITY;
-import static io.mycat.mycat2.sqlparser.TokenHash.*;
-import static io.mycat.mycat2.sqlparser.TokenHash.SERIALIZABLE;
-import static io.mycat.mycat2.sqlparser.byteArrayInterface.Tokenizer2.COMMA;
 import static io.mycat.mycat2.sqlparser.byteArrayInterface.TokenizerUtil.debug;
 
 /**
@@ -129,7 +123,7 @@ public class TCLSQLParser {
                     pos++;
                 }
             }
-            if (hashArray.getType(pos) == COMMA) {
+            if (hashArray.getType(pos) == Tokenizer2.COMMA) {
                 debug(() -> "COMMA");
                 ++pos;
                 continue;
@@ -214,7 +208,7 @@ public class TCLSQLParser {
         if (hash == TokenHash.AUTOCOMMIT) {
             pos = TCLSQLParser.pickSetAutocommit(pos, arrayCount, context, hashArray, sql);
             return pos;
-        } else if (hash == TokenHash.GLOBAL || hash == TokenHash.SESSION || hash == TRANSACTION) {
+        } else if (hash == TokenHash.GLOBAL || hash == TokenHash.SESSION || hash ==  TokenHash.TRANSACTION) {
             if (hash == TokenHash.GLOBAL || hash == TokenHash.SESSION) {
                 //todo 记录SQL TYPE
                 debug(pos, context);
@@ -222,12 +216,12 @@ public class TCLSQLParser {
                 hash=hashArray.getHash(pos);
             }
             debug(pos, context);
-            if (hash == TRANSACTION) {
+            if (hash == TokenHash.TRANSACTION) {
                 //todo 记录SQL TYPE
                 ++pos;
                 while (pos < arrayCount) {
                     hash = hashArray.getHash(pos);
-                    if (hash == READ) {
+                    if (hash == TokenHash. READ) {
                         debug(pos, context);
                         ++pos;
                         hash = hashArray.getHash(pos);
@@ -240,44 +234,44 @@ public class TCLSQLParser {
                             //todo READ ONLY 记录SQL TYPE
                             ++pos;
                         }
-                    } else if (hash == ISOLATION) {
+                    } else if (hash ==  TokenHash.ISOLATION) {
                         debug(pos, context);
                         ++pos;
-                        if (hashArray.getHash(pos) == LEVEL) {
+                        if (hashArray.getHash(pos) == TokenHash. LEVEL) {
                             debug(pos, context);
                             ++pos;
                             hash = hashArray.getHash(pos);
-                            if (hash == REPEATABLE) {
+                            if (hash == TokenHash. REPEATABLE) {
                                 debug(pos, context);
                                 ++pos;
                                 hash = hashArray.getHash(pos);
-                                if (hash == READ) {
+                                if (hash ==  TokenHash.READ) {
                                     debug(pos, context);
                                     ++pos;
                                     //todo  REPEATABLE READ记录SQL TYPE
                                 }
-                            } else if (hash == READ) {
+                            } else if (hash ==  TokenHash.READ) {
                                 debug(pos, context);
                                 ++pos;
                                 hash = hashArray.getHash(pos);
-                                if (hash == COMMITTED) {
+                                if (hash == TokenHash. COMMITTED) {
                                     debug(pos, context);
                                     ++pos;
                                     //todo READ COMMITTED 记录SQL TYPE
-                                } else if (hash == UNCOMMITTED) {
+                                } else if (hash == TokenHash. UNCOMMITTED) {
                                     debug(pos, context);
                                     ++pos;
                                     //todo  READ UNCOMMITTED 记录SQL TYPE
                                 }
 
-                            } else if (hash == SERIALIZABLE) {
+                            } else if (hash ==  TokenHash.SERIALIZABLE) {
                                 debug(pos, context);
                                 ++pos;
                                 //todo  SERIALIZABLE 记录SQL TYPE
                             }
                         }
                     }
-                    if (hashArray.getType(pos) == COMMA) {
+                    if (hashArray.getType(pos) == Tokenizer2.COMMA) {
                         debug(pos, context);
                         ++pos;
                         continue;
@@ -302,13 +296,13 @@ public class TCLSQLParser {
         //todo 保存 gtrid
         debug(pos, context);
         ++pos;
-        if (hashArray.getType(pos) == COMMA) {
+        if (hashArray.getType(pos) == Tokenizer2.COMMA) {
             debug(pos, context);
             ++pos;
             //todo 保存 bqual
             debug(pos, context);
             ++pos;
-            if (hashArray.getType(pos) == COMMA) {
+            if (hashArray.getType(pos) == Tokenizer2.COMMA) {
                 debug(pos, context);
                 ++pos;
                 //todo 保存 formatID
@@ -334,7 +328,7 @@ public class TCLSQLParser {
                     debug(pos, context);
                     ++pos;
                     //todo XA {START|BEGIN} xid JOIN 记录SQL_TYPE
-                } else if (hash == RESUME) {
+                } else if (hash == TokenHash. RESUME) {
                     debug(pos, context);
                     ++pos;
                     //todo XA {START|BEGIN} xid RESUME 记录SQL_TYPE
@@ -347,15 +341,15 @@ public class TCLSQLParser {
                 ++pos;
                 pos = TCLSQLParser.pickXid(pos, arrayCount, context, hashArray);
                 long hash = hashArray.getHash(pos);
-                if (hash == SUSPEND) {
+                if (hash == TokenHash. SUSPEND) {
                     debug(pos, context);
                     ++pos;
                     hash = hashArray.getHash(pos);
-                    if (hash == FOR) {
+                    if (hash == TokenHash. FOR) {
                         debug(pos, context);
                         ++pos;
                         hash = hashArray.getHash(pos);
-                        if (hash == MIGRATE) {
+                        if (hash == TokenHash. MIGRATE) {
                             debug(pos, context);
                             ++pos;
                             //todo   标记 XA END xid SUSPEND FOR MIGRATE
@@ -377,10 +371,10 @@ public class TCLSQLParser {
                 debug(pos, context);
                 ++pos;
                 pos = TCLSQLParser.pickXid(pos, arrayCount, context, hashArray);
-                if (hashArray.getHash(pos) == ONE) {
+                if (hashArray.getHash(pos) == TokenHash. ONE) {
                     debug(pos, context);
                     ++pos;
-                    if (hashArray.getHash(pos) == PHASE) {
+                    if (hashArray.getHash(pos) == TokenHash. PHASE) {
                         debug(pos, context);
                         ++pos;
                         //todo   标记      XA COMMIT xid [ONE PHASE]
@@ -400,10 +394,10 @@ public class TCLSQLParser {
             case IntTokenHash.RECOVER: {
                 debug(pos, context);
                 ++pos;
-                if (hashArray.getHash(pos) == CONVERT) {
+                if (hashArray.getHash(pos) ==  TokenHash.CONVERT) {
                     debug(pos, context);
                     ++pos;
-                    if (hashArray.getHash(pos) == XID) {
+                    if (hashArray.getHash(pos) ==  TokenHash.XID) {
                         debug(pos, context);
                         //todo   标记            XA RECOVER CONVERT XID
                         ++pos;

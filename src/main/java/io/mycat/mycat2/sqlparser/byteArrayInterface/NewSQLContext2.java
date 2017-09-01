@@ -328,4 +328,11 @@ public class NewSQLContext2 {
         return null;
     } //by kaiz : 返回注解等号后面的内容
 
+    public ByteArrayInterface getBuffer() {
+        return buffer;
+    }
+
+    public HashArray getHashArray() {
+        return hashArray;
+    }
 }

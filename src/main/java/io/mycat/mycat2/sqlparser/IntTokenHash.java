@@ -4,6 +4,21 @@ package io.mycat.mycat2.sqlparser;
  * Created by Kaiz on 2017/3/4.
  */
 public class IntTokenHash {
+
+    //  generate by  DCLSQLParserHelper
+    public final static int ALL = -1650851837;
+    public final static int FILE = -860749820;
+    public final static int PROCESS = 1234436103;
+    public final static int PROXY = -180420603;
+    public final static int REFERENCES = -367263734;
+    public final static int EVENT=-992346107;
+    public final static int REPLICATION = 272760843;
+    public final static int SHUTDOWN = 524550152;
+    public final static int SUPER = -1079377915;
+    public final static int TRIGGER = 1295319047;
+    public final static int USAGE = 1964179461;
+
+
     public static final int ANNOTATION_BALANCE = 0x00140001;
     public static final int ANNOTATION_START = 0x00150002;
     public static final int ANNOTATION_END = 0x00160002;

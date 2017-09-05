@@ -4,10 +4,13 @@ import io.mycat.mycat2.sqlparser.IntTokenHash;
 import io.mycat.mycat2.sqlparser.SQLParseUtils.HashArray;
 import io.mycat.mycat2.sqlparser.SQLParseUtils.Tokenizer;
 import io.mycat.mycat2.sqlparser.TokenHash;
+import io.mycat.mycat2.sqlparser.byteArrayInterface.dcl.DCLSQLParser;
+import io.mycat.mycat2.sqlparser.byteArrayInterface.dcl.DCLSQLParserHelper;
 
 import java.util.stream.IntStream;
 
 import static io.mycat.mycat2.sqlparser.byteArrayInterface.TokenizerUtil.debug;
+import static io.mycat.mycat2.sqlparser.byteArrayInterface.TokenizerUtil.debugError;
 
 /**
  * Created by Kaiz on 2017/2/6.
@@ -399,7 +402,7 @@ public class NewSQLParser2 {
                     break;
                 case IntTokenHash.SET:
                     if (hashArray.getHash(pos) == TokenHash.SET) {
-                        pos = TCLSQLParser.pickSetAutocommitAndSetTransaction(pos, arrayCount, context, hashArray, sql);
+                        pos = TCLSQLParser.pickSetAutocommitAndSetTransaction(++pos, arrayCount, context, hashArray, sql);
                     }
                     break;
                 case IntTokenHash.COMMIT:
@@ -416,7 +419,7 @@ public class NewSQLParser2 {
                         pos++;
                         TokenizerUtil.debug(() -> "START");
                         if (hashArray.getHash(pos) == TokenHash.TRANSACTION) {
-                            pos = TCLSQLParser.pickStartTransaction(pos, arrayCount, context, hashArray);
+                            pos = TCLSQLParser.pickStartTransaction(       ++pos, arrayCount, context, hashArray);
                         }
                     }
                     break;
@@ -519,7 +522,8 @@ public class NewSQLParser2 {
                     debug(pos, context);
                     ++pos;
                     if (hashArray.getHash(pos) == TokenHash.TABLES) {
-                        pos = TCLSQLParser.pickLockTables(pos, arrayCount, context, hashArray);
+                        debug(pos, context);
+                        pos = TCLSQLParser.pickLockTables(  ++pos, arrayCount, context, hashArray);
                     }
                     break;
                 }
@@ -532,11 +536,22 @@ public class NewSQLParser2 {
                     break;
                 }
                 case IntTokenHash.XA: {
-                    pos = TCLSQLParser.pickXATransaction(pos, arrayCount, context, hashArray);
+                    debug(pos, context);
+                    pos = TCLSQLParser.pickXATransaction(      ++pos, arrayCount, context, hashArray);
+                    break;
+                }
+                case IntTokenHash.GRANT: {
+                    TokenizerUtil.debug(pos,context);
+                    pos = DCLSQLParser.pickGrant(++pos, arrayCount, context, hashArray,sql);
+                    break;
+                }
+                case IntTokenHash.REVOKE: {
+                    TokenizerUtil.debug(pos,context);
+                    pos = DCLSQLParser.pickRevoke(++pos, arrayCount, context, hashArray,sql);
                     break;
                 }
                 default:
-                //    System.out.println(hashArray.getIntHash(pos));
+                    debugError(pos, context);
                     pos++;
                     break;
             }

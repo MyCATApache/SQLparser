@@ -55,6 +55,11 @@ public class NewSQLContext2 {
     //    public static final byte COMMIT_SQL = 17;
     public static final byte SELECT_INTO_SQL = 36;
     public static final byte SELECT_FOR_UPDATE_SQL = 37;
+    public static final byte START_TRANSACTION_SQL = 38;
+    public static final byte START_SLAVE_SQL = 39;
+    public static final byte XA_START = 40;
+    public static final byte XA_BEGIN = 41;
+    public static final byte XA_END = 42;
 
     //ANNOTATION TYPE
     public static final byte ANNOTATION_BALANCE = 1;

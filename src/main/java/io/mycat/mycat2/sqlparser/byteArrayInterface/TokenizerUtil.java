@@ -92,6 +92,41 @@ public class TokenizerUtil {
         }
     }
 
+    /**
+     * Account name syntax is 'user_name'@'host_name'.
+     */
+    public static int pickSpecifyingAccountNames(int pos, final int arrayCount, NewSQLContext2 context, HashArray hashArray, ByteArrayInterface sql) {
+        TokenizerUtil.debug(pos,context);
+        //todo 捕获 'user_name'
+        ++pos;
+        if (Tokenizer2.AT == hashArray.getType(pos)) {
+            TokenizerUtil.debug(pos,context);
+            ++pos;
+            TokenizerUtil.debug(pos,context);
+            //todo 捕获 'host_name'
+            ++pos;
+        } else {
+            //语法错误
+        }
+        return pos;
+    }
+
+    public static int pickColumnList(int pos, final int arrayCount, NewSQLContext2 context, HashArray hashArray, ByteArrayInterface sql) {
+        //todo 捕获 'column'
+        TokenizerUtil.debug(pos,context);
+        ++pos;
+        int type = hashArray.getType(pos);
+        while (Tokenizer2.COMMA == type) {
+            TokenizerUtil.debug(pos,context);
+            ++pos;
+            TokenizerUtil.debug(pos,context);
+            //todo 捕获 'column'
+            type = hashArray.getType(++pos);
+        }
+        return pos;
+    }
+
+
 
     public static void debug(Supplier<String> msg) {
         if (LOGGER.isDebugEnabled()) {
@@ -108,6 +143,12 @@ public class TokenizerUtil {
         if (LOGGER.isDebugEnabled()) {
             HashArray hashArray=context.getHashArray();
             LOGGER.debug(context.getBuffer().getString(hashArray.getPos(pos), hashArray.getSize(pos)));
+        }
+    }
+    public static void debugError(int pos,NewSQLContext2 context) {
+        if (LOGGER.isDebugEnabled()) {
+            HashArray hashArray=context.getHashArray();
+            LOGGER.debug(context.getBuffer().getString(hashArray.getPos(pos), hashArray.getSize(pos))+":"+hashArray.getHash(pos));
         }
     }
 

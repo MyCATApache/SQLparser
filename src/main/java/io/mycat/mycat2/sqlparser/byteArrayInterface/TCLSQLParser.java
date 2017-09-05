@@ -75,7 +75,6 @@ public class TCLSQLParser {
     }
 
     public static int pickSetAutocommit(int pos, final int arrayCount, NewSQLContext2 context, HashArray hashArray, ByteArrayInterface sql) {
-        pos++;
         debug(() -> "AUTOCOMMIT");
         if (hashArray.getType(pos) == Tokenizer2.EQUAL) {
             debug(() -> "=");
@@ -95,7 +94,6 @@ public class TCLSQLParser {
     }
 
     static int pickStartTransaction(int pos, final int arrayCount, NewSQLContext2 context, HashArray hashArray) {
-        pos++;
         debug(() -> "TRANSACTION");
         //todo testStartTransaction
         while (pos < arrayCount) {
@@ -151,8 +149,6 @@ public class TCLSQLParser {
      * @return
      */
     public static int pickLockTables(int pos, final int arrayCount, NewSQLContext2 context, HashArray hashArray) {
-       debug(pos,context);
-        ++pos;
         while (pos < arrayCount) {
           //  int type = hashArray.getType(pos);
             //记录 tbl_name;
@@ -203,10 +199,9 @@ public class TCLSQLParser {
     public static int pickSetAutocommitAndSetTransaction(int pos, final int arrayCount, NewSQLContext2 context, HashArray hashArray, ByteArrayInterface sql) {
         context.setSQLType(NewSQLContext2.SET_SQL);
         TokenizerUtil.debug(() -> "SET");
-        pos++;
         long hash = hashArray.getHash(pos);
         if (hash == TokenHash.AUTOCOMMIT) {
-            pos = TCLSQLParser.pickSetAutocommit(pos, arrayCount, context, hashArray, sql);
+            pos = TCLSQLParser.pickSetAutocommit(++pos, arrayCount, context, hashArray, sql);
             return pos;
         } else if (hash == TokenHash.GLOBAL || hash == TokenHash.SESSION || hash ==  TokenHash.TRANSACTION) {
             if (hash == TokenHash.GLOBAL || hash == TokenHash.SESSION) {
@@ -314,15 +309,12 @@ public class TCLSQLParser {
     }
 
     public static int pickXATransaction(int pos, final int arrayCount, NewSQLContext2 context, HashArray hashArray) {
-        debug(pos, context);
-        ++pos;
         int intHash = hashArray.getIntHash(pos);
         switch (intHash) {
             case IntTokenHash.START:
             case IntTokenHash.BEGIN: {
                 debug(pos, context);
-                ++pos;
-                pos = TCLSQLParser.pickXid(pos, arrayCount, context, hashArray);
+                pos = TCLSQLParser.pickXid(++pos, arrayCount, context, hashArray);
                 long hash = hashArray.getHash(pos);
                 if (hash == TokenHash.JOIN) {
                     debug(pos, context);
@@ -338,8 +330,7 @@ public class TCLSQLParser {
             }
             case IntTokenHash.END: {
                 debug(pos, context);
-                ++pos;
-                pos = TCLSQLParser.pickXid(pos, arrayCount, context, hashArray);
+                pos = TCLSQLParser.pickXid(++pos, arrayCount, context, hashArray);
                 long hash = hashArray.getHash(pos);
                 if (hash == TokenHash. SUSPEND) {
                     debug(pos, context);
@@ -362,15 +353,13 @@ public class TCLSQLParser {
             }
             case IntTokenHash.PREPARE: {
                 debug(pos, context);
-                ++pos;
-                pos = TCLSQLParser.pickXid(pos, arrayCount, context, hashArray);
+                pos = TCLSQLParser.pickXid(++pos, arrayCount, context, hashArray);
                 //todo   标记   XA PREPARE xid
                 break;
             }
             case IntTokenHash.COMMIT: {
                 debug(pos, context);
-                ++pos;
-                pos = TCLSQLParser.pickXid(pos, arrayCount, context, hashArray);
+                pos = TCLSQLParser.pickXid(++pos, arrayCount, context, hashArray);
                 if (hashArray.getHash(pos) == TokenHash. ONE) {
                     debug(pos, context);
                     ++pos;
@@ -386,8 +375,7 @@ public class TCLSQLParser {
             }
             case IntTokenHash.ROLLBACK: {
                 debug(pos, context);
-                ++pos;
-                pos = TCLSQLParser.pickXid(pos, arrayCount, context, hashArray);
+                pos = TCLSQLParser.pickXid(++pos, arrayCount, context, hashArray);
                 //todo   标记        XA ROLLBACK xid
                 break;
             }

@@ -7,8 +7,6 @@ package io.mycat.mycat2.sqlparser;
 
 import io.mycat.mycat2.sqlparser.byteArrayInterface.ByteArrayInterface;
 import io.mycat.mycat2.sqlparser.byteArrayInterface.DefaultByteArray;
-import io.mycat.mycat2.sqlparser.byteArrayInterface.NewSQLContext2;
-import io.mycat.mycat2.sqlparser.byteArrayInterface.NewSQLParser2;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.profile.GCProfiler;
 import org.openjdk.jmh.runner.Runner;
@@ -31,8 +29,8 @@ public class SQLBenchmark {
     SQLContext context;
     NewSQLParser newSQLParser;
     NewSQLContext newSQLContext;
-    NewSQLParser2 newSQLParser2;
-    NewSQLContext2 newSQLContext2;
+    BufferSQLParser newSQLParser2;
+    BufferSQLContext newSQLContext2;
     byte[] srcBytes;
     String src;
     ByteArrayInterface byteArrayInterface;
@@ -58,8 +56,8 @@ public class SQLBenchmark {
         context = new SQLContext();
         newSQLParser = new NewSQLParser();
         newSQLContext = new NewSQLContext();
-        newSQLParser2 = new NewSQLParser2();
-        newSQLContext2 = new NewSQLContext2();
+        newSQLParser2 = new BufferSQLParser();
+        newSQLContext2 = new BufferSQLContext();
         //newSQLParser.init();
 //        unsafeSQLParser = new NewUnsafeSQLParser();
 //        unsafeSQLParser.init();

@@ -1,5 +1,7 @@
 package io.mycat.mycat2.sqlparser.byteArrayInterface;
 
+import io.mycat.mycat2.sqlparser.BufferSQLContext;
+import io.mycat.mycat2.sqlparser.BufferSQLParser;
 import io.mycat.mycat2.sqlparser.SQLParseUtils.HashArray;
 
 import java.nio.charset.StandardCharsets;
@@ -249,8 +251,8 @@ public class Tokenizer2 {
     }
 
     public static void main(String[] args) {
-      NewSQLParser2 sqlParser2=new NewSQLParser2();
-      NewSQLContext2 context2=new NewSQLContext2();
+      BufferSQLParser sqlParser2=new BufferSQLParser();
+      BufferSQLContext context2=new BufferSQLContext();
       sqlParser2.parse("AUTOCOMMIT".getBytes(StandardCharsets.UTF_8),context2);
     }
 }

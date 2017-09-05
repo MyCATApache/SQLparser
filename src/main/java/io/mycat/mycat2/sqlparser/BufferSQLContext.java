@@ -1,13 +1,14 @@
-package io.mycat.mycat2.sqlparser.byteArrayInterface;
+package io.mycat.mycat2.sqlparser;
 
 import io.mycat.mycat2.sqlparser.SQLParseUtils.HashArray;
+import io.mycat.mycat2.sqlparser.byteArrayInterface.ByteArrayInterface;
 
 import java.util.Arrays;
 
 /**
  * Created by Fanfan on 2017/3/21.
  */
-public class NewSQLContext2 {
+public class BufferSQLContext {
     //DDL
     public static final byte CREATE_SQL = 1;
     public static final byte ALTER_SQL = 2;
@@ -96,7 +97,7 @@ public class NewSQLContext2 {
     private int preTableResultPos = 0;
     private int hashArrayRealSQLOffset = 0;//记录真实sql开始偏移
 
-    public NewSQLContext2() {
+    public BufferSQLContext() {
         tblResult = new short[tblResultArraySize];
         sqlInfoArray = new short[512];
         annotationValue = new long[16];

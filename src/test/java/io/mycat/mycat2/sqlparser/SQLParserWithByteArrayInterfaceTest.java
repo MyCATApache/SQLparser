@@ -1,7 +1,5 @@
 package io.mycat.mycat2.sqlparser;
 
-import io.mycat.mycat2.sqlparser.byteArrayInterface.NewSQLContext2;
-import io.mycat.mycat2.sqlparser.byteArrayInterface.NewSQLParser2;
 import junit.framework.TestCase;
 import org.junit.Before;
 import org.junit.Test;
@@ -14,13 +12,13 @@ import java.util.stream.IntStream;
  */
 public class SQLParserWithByteArrayInterfaceTest extends TestCase {
 //    SQLParser parser;
-    NewSQLParser2 parser;
-    NewSQLContext2 context;
+    BufferSQLParser parser;
+    BufferSQLContext context;
 
     @Before
     protected void setUp() throws Exception {
-        parser = new NewSQLParser2();
-        context = new NewSQLContext2();
+        parser = new BufferSQLParser();
+        context = new BufferSQLContext();
         //parser.init();
         MatchMethodGenerator.initShrinkCharTbl();
     }

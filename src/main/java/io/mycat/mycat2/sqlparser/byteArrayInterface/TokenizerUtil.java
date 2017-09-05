@@ -1,5 +1,6 @@
 package io.mycat.mycat2.sqlparser.byteArrayInterface;
 
+import io.mycat.mycat2.sqlparser.BufferSQLContext;
 import io.mycat.mycat2.sqlparser.IntTokenHash;
 import io.mycat.mycat2.sqlparser.SQLParseUtils.HashArray;
 import io.mycat.mycat2.sqlparser.TokenHash;
@@ -95,7 +96,7 @@ public class TokenizerUtil {
     /**
      * Account name syntax is 'user_name'@'host_name'.
      */
-    public static int pickSpecifyingAccountNames(int pos, final int arrayCount, NewSQLContext2 context, HashArray hashArray, ByteArrayInterface sql) {
+    public static int pickSpecifyingAccountNames(int pos, final int arrayCount, BufferSQLContext context, HashArray hashArray, ByteArrayInterface sql) {
         TokenizerUtil.debug(pos,context);
         //todo 捕获 'user_name'
         ++pos;
@@ -111,7 +112,7 @@ public class TokenizerUtil {
         return pos;
     }
 
-    public static int pickColumnList(int pos, final int arrayCount, NewSQLContext2 context, HashArray hashArray, ByteArrayInterface sql) {
+    public static int pickColumnList(int pos, final int arrayCount, BufferSQLContext context, HashArray hashArray, ByteArrayInterface sql) {
         //todo 捕获 'column'
         TokenizerUtil.debug(pos,context);
         ++pos;
@@ -139,13 +140,13 @@ public class TokenizerUtil {
             LOGGER.debug(tokenizer.sql.getString(hashArray.getPos(pos), hashArray.getSize(pos)));
         }
     }
-    public static void debug(int pos,NewSQLContext2 context) {
+    public static void debug(int pos,BufferSQLContext context) {
         if (LOGGER.isDebugEnabled()) {
             HashArray hashArray=context.getHashArray();
             LOGGER.debug(context.getBuffer().getString(hashArray.getPos(pos), hashArray.getSize(pos)));
         }
     }
-    public static void debugError(int pos,NewSQLContext2 context) {
+    public static void debugError(int pos,BufferSQLContext context) {
         if (LOGGER.isDebugEnabled()) {
             HashArray hashArray=context.getHashArray();
             LOGGER.debug(context.getBuffer().getString(hashArray.getPos(pos), hashArray.getSize(pos))+":"+hashArray.getHash(pos));

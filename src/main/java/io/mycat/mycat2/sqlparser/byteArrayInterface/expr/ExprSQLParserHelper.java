@@ -1,10 +1,11 @@
 package io.mycat.mycat2.sqlparser.byteArrayInterface.expr;
 
+import io.mycat.mycat2.sqlparser.BufferSQLContext;
 import io.mycat.mycat2.sqlparser.IntTokenHash;
 import io.mycat.mycat2.sqlparser.SQLParseUtils.HashArray;
 import io.mycat.mycat2.sqlparser.TokenHash;
 import io.mycat.mycat2.sqlparser.byteArrayInterface.ByteArrayInterface;
-import io.mycat.mycat2.sqlparser.byteArrayInterface.NewSQLContext2;
+
 import io.mycat.mycat2.sqlparser.byteArrayInterface.Tokenizer2;
 import io.mycat.mycat2.sqlparser.byteArrayInterface.TokenizerUtil;
 
@@ -44,7 +45,7 @@ public class ExprSQLParserHelper {
      * | <>
      * | !=
      */
-    public static int pickComparisonOperator(int pos, final int arrayCount, NewSQLContext2 context, HashArray hashArray, ByteArrayInterface sql) {
+    public static int pickComparisonOperator(int pos, final int arrayCount, BufferSQLContext context, HashArray hashArray, ByteArrayInterface sql) {
         int next;
         switch (hashArray.getType(pos++)) {
             case Tokenizer2.EQUAL:// =
@@ -189,7 +190,7 @@ public class ExprSQLParserHelper {
     /**
      * A subquery's outer statement can be any one of: SELECT, INSERT, UPDATE, DELETE, SET, or DO.
      */
-    public static boolean isSubquery(int pos, final int arrayCount, NewSQLContext2 context, HashArray hashArray, ByteArrayInterface sql) {
+    public static boolean isSubquery(int pos, final int arrayCount, BufferSQLContext context, HashArray hashArray, ByteArrayInterface sql) {
         int intHash = hashArray.getIntHash(pos);
         switch (intHash) {
             case IntTokenHash.SELECT:
@@ -219,7 +220,7 @@ public class ExprSQLParserHelper {
      * @param sql
      * @return
      */
-    public static int pickSubquery(int pos, final int arrayCount, NewSQLContext2 context, HashArray hashArray, ByteArrayInterface sql) {
+    public static int pickSubquery(int pos, final int arrayCount, BufferSQLContext context, HashArray hashArray, ByteArrayInterface sql) {
         int intHash = hashArray.getIntHash(pos);
         switch (intHash) {
             case IntTokenHash.SELECT:
@@ -246,7 +247,7 @@ public class ExprSQLParserHelper {
      * | WITH QUERY EXPANSION
      * }
      */
-    public static int pickSearchModifier(int pos, final int arrayCount, NewSQLContext2 context, HashArray hashArray, ByteArrayInterface sql) {
+    public static int pickSearchModifier(int pos, final int arrayCount, BufferSQLContext context, HashArray hashArray, ByteArrayInterface sql) {
         long longHash = hashArray.getHash(pos);
         if (TokenHash.IN == longHash) {
              longHash = hashArray.getHash(++pos);

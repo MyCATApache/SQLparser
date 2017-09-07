@@ -533,8 +533,9 @@ public class ExprSQLParser {
                     //todo 逻辑优化
                     TokenizerUtil.debug(() -> "表达式函数调用");
                     pos = pickFunctionCall(--pos, arrayCount, context, hashArray, sql);
+                    TokenizerUtil.debug(() -> "表达式函数调用结束尾部");
+                    TokenizerUtil.debug(pos, context);
                     type2 = hashArray.getType(pos);
-                    return pos;
                 }
                 longHash2Pos = hashArray.getHash(pos);//位置2
                 type2 = hashArray.getType(pos);
@@ -545,7 +546,6 @@ public class ExprSQLParser {
                     TokenizerUtil.debug(() -> "collation_name:");
                     TokenizerUtil.debug(pos, context);
                     ++pos;
-                    return pos;
                 }
                 longHash2Pos = hashArray.getHash(pos);//位置2
                 type2 = hashArray.getType(pos);
@@ -857,6 +857,8 @@ public class ExprSQLParser {
                 TokenizerUtil.debug(() -> ")");
                 ++pos;
                 return pos;
+            }else {
+                TokenizerUtil.debug(()->"pickFunctionCall :语法错误");
             }
         }
         return pos;//语法错误

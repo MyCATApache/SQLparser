@@ -1,7 +1,5 @@
 package io.mycat.mycat2.sqlparser;
 
-import io.mycat.mycat2.sqlparser.byteArrayInterface.NewSQLContext2;
-import io.mycat.mycat2.sqlparser.byteArrayInterface.NewSQLParser2;
 import junit.framework.TestCase;
 import org.junit.Before;
 import org.junit.Test;
@@ -180,8 +178,8 @@ public class DCLSQLParseTest extends TestCase {
 
 
     //    SQLParser parser;
-    NewSQLParser2 parser;
-    NewSQLContext2 context;
+    BufferSQLParser parser;
+    BufferSQLContext context;
     private static final Logger LOGGER = LoggerFactory.getLogger(TCLSQLParserTest.class);
 
     private void test(String t) {
@@ -192,8 +190,8 @@ public class DCLSQLParseTest extends TestCase {
 
     @Before
     protected void setUp() throws Exception {
-        parser = new NewSQLParser2();
-        context = new NewSQLContext2();
+        parser = new BufferSQLParser();
+        context = new BufferSQLContext();
         //parser.init();
         MatchMethodGenerator.initShrinkCharTbl();
     }

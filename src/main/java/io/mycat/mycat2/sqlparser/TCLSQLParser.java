@@ -1,9 +1,10 @@
-package io.mycat.mycat2.sqlparser.byteArrayInterface;
+package io.mycat.mycat2.sqlparser;
 
-import io.mycat.mycat2.sqlparser.IntTokenHash;
 import io.mycat.mycat2.sqlparser.SQLParseUtils.HashArray;
 import io.mycat.mycat2.sqlparser.SQLParseUtils.Tokenizer;
-import io.mycat.mycat2.sqlparser.TokenHash;
+import io.mycat.mycat2.sqlparser.byteArrayInterface.ByteArrayInterface;
+import io.mycat.mycat2.sqlparser.byteArrayInterface.Tokenizer2;
+import io.mycat.mycat2.sqlparser.byteArrayInterface.TokenizerUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -21,7 +22,7 @@ public class TCLSQLParser {
      * @param context
      * @return
      */
-    public static int pickCommitRollback(int pos, final int arrayCount, NewSQLContext2 context, HashArray hashArray) {
+    public static int pickCommitRollback(int pos, final int arrayCount, BufferSQLContext context, HashArray hashArray) {
         if (hashArray.getHash(pos) == TokenHash.WORK) {
             ++pos;
             debug(() -> "WORK");
@@ -74,7 +75,7 @@ public class TCLSQLParser {
         return pos;
     }
 
-    public static int pickSetAutocommit(int pos, final int arrayCount, NewSQLContext2 context, HashArray hashArray, ByteArrayInterface sql) {
+    public static int pickSetAutocommit(int pos, final int arrayCount, BufferSQLContext context, HashArray hashArray, ByteArrayInterface sql) {
         debug(() -> "AUTOCOMMIT");
         if (hashArray.getType(pos) == Tokenizer2.EQUAL) {
             debug(() -> "=");
@@ -93,7 +94,7 @@ public class TCLSQLParser {
         return pos;
     }
 
-    static int pickStartTransaction(int pos, final int arrayCount, NewSQLContext2 context, HashArray hashArray) {
+    static int pickStartTransaction(int pos, final int arrayCount, BufferSQLContext context, HashArray hashArray) {
         debug(() -> "TRANSACTION");
         //todo testStartTransaction
         while (pos < arrayCount) {
@@ -148,7 +149,7 @@ public class TCLSQLParser {
      * @param hashArray
      * @return
      */
-    public static int pickLockTables(int pos, final int arrayCount, NewSQLContext2 context, HashArray hashArray) {
+    public static int pickLockTables(int pos, final int arrayCount, BufferSQLContext context, HashArray hashArray) {
         while (pos < arrayCount) {
           //  int type = hashArray.getType(pos);
             //记录 tbl_name;
@@ -196,8 +197,8 @@ public class TCLSQLParser {
         return pos;
     }
 
-    public static int pickSetAutocommitAndSetTransaction(int pos, final int arrayCount, NewSQLContext2 context, HashArray hashArray, ByteArrayInterface sql) {
-        context.setSQLType(NewSQLContext2.SET_SQL);
+    public static int pickSetAutocommitAndSetTransaction(int pos, final int arrayCount, BufferSQLContext context, HashArray hashArray, ByteArrayInterface sql) {
+        context.setSQLType(BufferSQLContext.SET_SQL);
         TokenizerUtil.debug(() -> "SET");
         long hash = hashArray.getHash(pos);
         if (hash == TokenHash.AUTOCOMMIT) {
@@ -287,7 +288,7 @@ public class TCLSQLParser {
      * @param hashArray
      * @return
      */
-    public static int pickXid(int pos, final int arrayCount, NewSQLContext2 context, HashArray hashArray) {
+    public static int pickXid(int pos, final int arrayCount, BufferSQLContext context, HashArray hashArray) {
         //todo 保存 gtrid
         debug(pos, context);
         ++pos;
@@ -308,7 +309,7 @@ public class TCLSQLParser {
         return pos;
     }
 
-    public static int pickXATransaction(int pos, final int arrayCount, NewSQLContext2 context, HashArray hashArray) {
+    public static int pickXATransaction(int pos, final int arrayCount, BufferSQLContext context, HashArray hashArray) {
         int intHash = hashArray.getIntHash(pos);
         switch (intHash) {
             case IntTokenHash.START:

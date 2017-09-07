@@ -33,7 +33,15 @@ public class Tokenizer2 {
     public static final byte ANNOTATION_BALANCE = 20;
     public static final byte ANNOTATION_START = 21;
     public static final byte ANNOTATION_END = 22;
-
+    public static final byte COLON = 23;
+    public static final byte TOBER =24;//~
+    public static final byte QUESTION_MARK =25;//?
+    public static final byte OR =26;
+    public static final byte LEFT_CURLY_BRACKET =27;//{
+    public static final byte RIGHT_CURLY_BRACKET =28;//}
+    public static final byte AND =29;
+    public static final byte PERCENT =30;
+    public static final byte CARET =31;
     ByteArrayInterface sql;
     final byte[] charType = new byte[512];
     HashArray hashArray;
@@ -68,7 +76,15 @@ public class Tokenizer2 {
         charType['<'<<1] = LESS;
         charType['>'<<1] = GREATER;
         charType['@'<<1] = AT;
-
+        charType['!'<<1] = COLON;
+        charType['~'<<1] = TOBER;
+        charType['?'<<1] = QUESTION_MARK;
+        charType['|'<<1] = OR;
+        charType['}'<<1] = RIGHT_CURLY_BRACKET;
+        charType['{'<<1] = LEFT_CURLY_BRACKET;
+        charType['%'<<1] = PERCENT;
+        charType['^'<<1] = CARET;
+        charType['&'<<1] =AND;
         charType[('$'<<1)+1] = 1;
         IntStream.rangeClosed('0', '9').forEach(c -> charType[(c<<1)+1] = (byte)(c-'0'+2));
         IntStream.rangeClosed('A', 'Z').forEach(c -> charType[(c<<1)+1] = (byte)(c-'A'+12));

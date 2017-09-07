@@ -92,6 +92,7 @@ public class TokenizerUtil {
         }
     }
 
+
     /**
      * Account name syntax is 'user_name'@'host_name'.
      */
@@ -148,7 +149,7 @@ public class TokenizerUtil {
     public static void debugError(int pos,NewSQLContext2 context) {
         if (LOGGER.isDebugEnabled()) {
             HashArray hashArray=context.getHashArray();
-            LOGGER.debug(context.getBuffer().getString(hashArray.getPos(pos), hashArray.getSize(pos))+":"+hashArray.getHash(pos));
+            LOGGER.debug(hashArray.getType(pos)+";"+context.getBuffer().getString(hashArray.getPos(pos), hashArray.getSize(pos))+":"+hashArray.getHash(pos));
         }
     }
 

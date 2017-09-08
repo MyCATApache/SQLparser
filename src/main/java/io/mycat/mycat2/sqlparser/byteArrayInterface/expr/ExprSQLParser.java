@@ -196,6 +196,7 @@ public class ExprSQLParser {
                 return pos;
             } else {
                 TokenizerUtil.debug(()->"IN (expr [, expr] ...)");
+                ++pos;
                 pos = pickExpr(pos, arrayCount, context, hashArray, sql);
                 int type = hashArray.getType(pos);
                 while (type == Tokenizer2.COMMA) {
@@ -369,6 +370,17 @@ public class ExprSQLParser {
         return pos;
     }
 
+    public static int pickIdentifierExpr(int pos, final int arrayCount, BufferSQLContext context, HashArray hashArray, ByteArrayInterface sql) {
+        TokenizerUtil.debug(pos, context);
+        ++pos;
+        int type=hashArray.getType(pos);
+        if (Tokenizer2.DOT==type){
+            ++pos;
+            TokenizerUtil.debug(pos, context);
+        }
+        return pos;
+    }
+
     /**
      * 下面这个语法是调整过顺序的(或语义的顺序调整,对解析没有影响)
      * simple_expr:
@@ -505,7 +517,7 @@ public class ExprSQLParser {
                 } else {
                     TokenizerUtil.debug(() -> "literal或者identifier");
                     TokenizerUtil.debug(pos, context);
-                    ++pos;
+                    pos=pickIdentifierExpr(pos, arrayCount, context, hashArray, sql);
                 }
                 /**todo  捕获
                  * literal

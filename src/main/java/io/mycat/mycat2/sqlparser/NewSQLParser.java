@@ -1,6 +1,5 @@
 package io.mycat.mycat2.sqlparser;
 
-import io.mycat.mycat2.sqlparser.byteArrayInterface.ByteArrayInterface;
 import io.mycat.mycat2.sqlparser.SQLParseUtils.HashArray;
 import io.mycat.mycat2.sqlparser.SQLParseUtils.Tokenizer;
 
@@ -104,7 +103,7 @@ public class NewSQLParser {
         }
     }
 
-    int pickTableNames(int pos, final int arrayCount, NewSQLContext context) {
+    public int pickTableNames(int pos, final int arrayCount, NewSQLContext context) {
         int type;
         long hash = hashArray.getHash(pos);
         if (hash != 0) {

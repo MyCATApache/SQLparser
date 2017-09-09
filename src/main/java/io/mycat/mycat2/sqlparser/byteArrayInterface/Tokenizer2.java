@@ -252,7 +252,7 @@ public class Tokenizer2 {
                     } else if (next == '/') {
                         pos = skipSingleLineComment(sql, pos, sqlLength);
                     } else {
-                        hashArray.set(charType[next<<1], pos++, 1);
+                        hashArray.set(cType, pos++, 1);
                     }
                     break;
                 case AT:
